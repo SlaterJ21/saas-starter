@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: saas-starter-db
+    environment:
+      POSTGRES_DB: saas_starter_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  graphql:
+    image: graphile/postgraphile:latest
+    container_name: saas-starter-graphql
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "5001:5000"
+    command:
+      - "--connection"
+      - "postgres://postgres:postgres@db:5432/saas_starter_dev"
+      - "--schema"
+      - "public"
+      - "--watch"
+      - "--enhance-graphiql"
+      - "--dynamic-json"
+      - "--show-error-stack"
+      - "--extended-errors"
+      - "hint,detail,errcode"
+      - "--enable-query-batching"
+      - "--legacy-relations"
+      - "omit"
+      - "--port"
+      - "5000"
+      - "--host"
+      - "0.0.0.0"
+    environment:
+      NODE_ENV: development
+
+volumes:
+  postgres_data:
