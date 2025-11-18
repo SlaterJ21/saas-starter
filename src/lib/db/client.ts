@@ -278,4 +278,59 @@ export const db = {
         );
         return result.rows[0] || null;
     },
+
+    async getOrganizationMembers(organizationId: string) {
+        const result = await pool.query(
+            `SELECT om.*, u.name, u.email, u.avatar_url, u.auth0_id
+     FROM organization_members om
+     JOIN users u ON om.user_id = u.id
+     WHERE om.organization_id = $1
+     ORDER BY 
+       CASE om.role
+         WHEN 'owner' THEN 1
+         WHEN 'admin' THEN 2
+         WHEN 'member' THEN 3
+         WHEN 'viewer' THEN 4
+       END,
+       om.joined_at ASC`,
+            [organizationId]
+        );
+        return result.rows;
+    },
+
+    async updateMemberRole(organizationId: string, userId: string, newRole: string) {
+        const result = await pool.query(
+            `UPDATE organization_members 
+     SET role = $1
+     WHERE organization_id = $2 AND user_id = $3
+     RETURNING *`,
+            [newRole, organizationId, userId]
+        );
+        return result.rows[0];
+    },
+
+    async removeMemberFromOrganization(organizationId: string, userId: string) {
+        await pool.query(
+            `DELETE FROM organization_members 
+     WHERE organization_id = $1 AND user_id = $2`,
+            [organizationId, userId]
+        );
+    },
+
+    async getUserByEmail(email: string) {
+        const result = await pool.query(
+            'SELECT * FROM users WHERE email = $1',
+            [email]
+        );
+        return result.rows[0] || null;
+    },
+
+    async isUserInOrganization(userId: string, organizationId: string): Promise<boolean> {
+        const result = await pool.query(
+            `SELECT 1 FROM organization_members 
+     WHERE user_id = $1 AND organization_id = $2`,
+            [userId, organizationId]
+        );
+        return result.rows.length > 0;
+    },
 };
