@@ -4,9 +4,9 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentOrgId } from '@/lib/org/current';
 import { redirect } from 'next/navigation';
 import Avatar from '@/components/Avatar';
-import { inviteMemberByEmail } from '@/app/actions/team';
 import MemberRoleSelect from '@/components/MemberRoleSelect';
 import RemoveMemberButton from '@/components/RemoveMemberButton';
+import InviteMemberForm from '@/components/InviteMemberForm';
 
 export default async function TeamPage() {
     const session = await auth0.getSession();
@@ -59,55 +59,7 @@ export default async function TeamPage() {
                 </div>
 
                 {/* Invite Member Form */}
-                {canManageTeam && (
-                    <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Invite Team Member</h2>
-                        <form action={inviteMemberByEmail} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="md:col-span-2">
-                                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Email Address *
-                                    </label>
-                                    <input
-                                        type="email"
-                                        id="email"
-                                        name="email"
-                                        required
-                                        placeholder="colleague@example.com"
-                                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        User must have an account already
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <label htmlFor="role" className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Role *
-                                    </label>
-                                    <select
-                                        id="role"
-                                        name="role"
-                                        required
-                                        defaultValue="member"
-                                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                    >
-                                        <option value="admin">Admin</option>
-                                        <option value="member">Member</option>
-                                        <option value="viewer">Viewer</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                            >
-                                Send Invite
-                            </button>
-                        </form>
-                    </div>
-                )}
+                {canManageTeam && <InviteMemberForm />}
 
                 {/* Members List */}
                 <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
