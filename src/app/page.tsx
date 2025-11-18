@@ -31,6 +31,16 @@ export default async function Home() {
     const currentOrgId = await getCurrentOrgId();
     const currentOrg = userOrgs.find(org => org.id === currentOrgId) || userOrgs[0];
 
+    let projectCount = 0;
+    let taskCount = 0;
+
+    if (currentOrgId) {
+        const projects = await db.getProjectsByOrganization(currentOrgId);
+        const tasks = await db.getTasksByOrganization(currentOrgId);
+        projectCount = projects.length;
+        taskCount = tasks.length;
+    }
+
     return (
         <DashboardLayout>
             <div className="space-y-6">
@@ -54,13 +64,13 @@ export default async function Home() {
                     />
                     <StatCard
                         title="Projects"
-                        value="0"
+                        value={projectCount}
                         icon="check"
                         color="green"
                     />
                     <StatCard
                         title="Tasks"
-                        value="0"
+                        value={taskCount}
                         icon="list"
                         color="purple"
                     />
