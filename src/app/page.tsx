@@ -1,5 +1,8 @@
 import {auth0} from '@/lib/auth0';
 import {db} from '@/lib/db/client';
+import OrgSwitcher from '@/components/OrgSwitcher';
+import Avatar from '@/components/Avatar';
+import {getCurrentOrgId} from '@/lib/org/current';
 
 export default async function Home() {
     const session = await auth0.getSession();
@@ -7,11 +10,15 @@ export default async function Home() {
 
     let dbUser = null;
     let userOrgs = [];
+    let currentOrg = null;
 
     if (auth0User) {
         try {
             dbUser = await db.findOrCreateUser(auth0User);
             userOrgs = await db.getUserOrganizations(dbUser.id);
+
+            const currentOrgId = await getCurrentOrgId();
+            currentOrg = userOrgs.find(org => org.id === currentOrgId) || userOrgs[0];
         } catch (error) {
             console.error('Error syncing user:', error);
         }
@@ -20,43 +27,62 @@ export default async function Home() {
     return (
         <main className="min-h-screen p-8 bg-gray-50">
             <div className="max-w-4xl mx-auto">
-                <div className="bg-white rounded-lg shadow-md p-8">
-                    <h1 className="text-4xl font-bold mb-2">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                    <h1 className="text-4xl font-bold mb-2 text-gray-900">
                         SaaS Starter Kit
                     </h1>
-                    <p className="text-gray-600 mb-8">
+                    <p className="text-gray-700 mb-8 text-lg">
                         Multi-tenant platform with GraphQL API
                     </p>
 
                     {auth0User && dbUser ? (
                         <div className="space-y-6">
                             {/* User Info */}
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                            <div
+                                className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-lg p-6">
                                 <div className="flex items-center gap-4">
-                                    {dbUser.avatar_url && (
-                                        <img
-                                            src={dbUser.avatar_url}
-                                            alt={dbUser.name || 'User'}
-                                            className="w-16 h-16 rounded-full"
-                                        />
-                                    )}
+                                    <Avatar
+                                        name={dbUser.name || 'User'}
+                                        imageUrl={dbUser.avatar_url}
+                                        size="lg"
+                                    />
                                     <div>
-                                        <p className="text-green-800 font-semibold text-lg">
-                                            ✅ {dbUser.name}
+                                        <p className="text-green-900 font-bold text-xl">
+                                            {dbUser.name}
                                         </p>
-                                        <p className="text-sm text-green-600">{dbUser.email}</p>
+                                        <p className="text-green-700 font-medium">{dbUser.email}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Organizations */}
+                            {/* Organization Switcher */}
+                            <div>
+                                <h2 className="text-xl font-bold mb-3 text-gray-900">Current Organization</h2>
+                                <OrgSwitcher
+                                    organizations={userOrgs}
+                                    currentOrgId={currentOrg?.id || null}
+                                />
+                            </div>
+
+                            {/* Current Org Info */}
+                            {currentOrg && (
+                                <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                                    <p className="text-blue-900 font-semibold">
+                                        You're viewing: {currentOrg.name}
+                                    </p>
+                                    <p className="text-blue-700 mt-1">
+                                        Role: <span className="font-semibold uppercase">{currentOrg.role}</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Organizations List */}
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-2xl font-bold">Your Organizations</h2>
+                                    <h2 className="text-2xl font-bold text-gray-900">All Organizations</h2>
                                     <a
                                         href="/organizations/new"
-                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition
-                                        text-sm font-medium"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-semibold shadow-md"
                                     >
                                         + Create Organization
                                     </a>
@@ -65,14 +91,14 @@ export default async function Home() {
                                 <div className="grid gap-4">
                                     {userOrgs.map((org) => (
                                         <div key={org.id}
-                                             className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
+                                             className="border-2 border-gray-300 rounded-lg p-5 hover:border-blue-400 hover:shadow-md transition">
                                             <div className="flex items-center justify-between">
                                                 <div>
-                                                    <h3 className="font-semibold text-lg">{org.name}</h3>
-                                                    <p className="text-sm text-gray-500">/{org.slug}</p>
+                                                    <h3 className="font-bold text-lg text-gray-900">{org.name}</h3>
+                                                    <p className="text-gray-700 font-medium">/{org.slug}</p>
                                                 </div>
                                                 <span
-                                                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium uppercase">
+                                                    className="px-4 py-2 bg-purple-600 text-white rounded-full text-xs font-bold uppercase">
                           {org.role}
                         </span>
                                             </div>
@@ -82,10 +108,10 @@ export default async function Home() {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex gap-4">
+                            <div className="flex gap-4 pt-4">
                                 <a
                                     href="/auth/logout"
-                                    className="inline-block bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition"
+                                    className="inline-block bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition font-semibold shadow-md"
                                 >
                                     Log Out
                                 </a>
@@ -93,7 +119,7 @@ export default async function Home() {
                                     href="http://localhost:5000/graphiql"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-block bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition"
+                                    className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold shadow-md"
                                 >
                                     Open GraphiQL →
                                 </a>
@@ -101,15 +127,15 @@ export default async function Home() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                                <p className="text-blue-800 text-lg">
+                            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6">
+                                <p className="text-blue-900 text-lg font-semibold">
                                     🔐 Please log in to access your dashboard
                                 </p>
                             </div>
 
                             <a
                                 href="/auth/login"
-                                className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition text-lg"
+                                className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition text-lg font-bold shadow-lg"
                             >
                                 Log In
                             </a>
