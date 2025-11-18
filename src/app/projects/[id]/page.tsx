@@ -1,15 +1,16 @@
-import { auth0 } from '@/lib/auth0';
-import { db } from '@/lib/db/client';
+import {auth0} from '@/lib/auth0';
+import {db} from '@/lib/db/client';
 import DashboardLayout from '@/components/DashboardLayout';
-import { redirect, notFound } from 'next/navigation';
+import {redirect, notFound} from 'next/navigation';
 import Link from 'next/link';
+import TaskStatusButtons from '@/components/TaskStatusButtons';
 
 type Props = {
     params: Promise<{ id: string }>;
 };
 
-export default async function ProjectDetailPage({ params }: Props) {
-    const { id } = await params;
+export default async function ProjectDetailPage({params}: Props) {
+    const {id} = await params;
 
     const session = await auth0.getSession();
     if (!session?.user) {
@@ -73,21 +74,24 @@ export default async function ProjectDetailPage({ params }: Props) {
                     <div className="flex items-center gap-6 text-sm text-gray-600 pt-4 border-t border-gray-200">
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                             </svg>
                             <span>{project.organization_name}</span>
                         </div>
                         {project.creator_name && (
                             <div className="flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
                                 <span>Created by {project.creator_name}</span>
                             </div>
                         )}
                         <div className="flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             <span>{new Date(project.created_at).toLocaleDateString()}</span>
                         </div>
@@ -154,7 +158,7 @@ export default async function ProjectDetailPage({ params }: Props) {
     );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({label, value, color}: { label: string; value: number; color: string }) {
     const colors = {
         gray: 'bg-gray-100 text-gray-700',
         blue: 'bg-blue-100 text-blue-700',
@@ -169,7 +173,12 @@ function StatCard({ label, value, color }: { label: string; value: number; color
     );
 }
 
-function TaskColumn({ title, tasks, color, projectId }: { title: string; tasks: any[]; color: string; projectId: string }) {
+function TaskColumn({title, tasks, color, projectId}: {
+    title: string;
+    tasks: any[];
+    color: string;
+    projectId: string
+}) {
     const colors = {
         gray: 'bg-gray-100 border-gray-300',
         blue: 'bg-blue-100 border-blue-300',
@@ -181,34 +190,51 @@ function TaskColumn({ title, tasks, color, projectId }: { title: string; tasks: 
             <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-gray-900">{title}</h3>
                 <span className="px-2 py-1 bg-gray-200 text-gray-700 rounded text-sm font-semibold">
-          {tasks.length}
-        </span>
+                    {tasks.length}
+                 </span>
             </div>
-
             <div className="space-y-3">
                 {tasks.length === 0 ? (
                     <p className="text-gray-500 text-sm text-center py-8">No tasks</p>
                 ) : (
                     tasks.map((task) => (
-                        <div key={task.id} className={`${colors[color as keyof typeof colors]} border-2 rounded-lg p-3 hover:shadow-md transition cursor-pointer`}>
-                            <h4 className="font-semibold text-gray-900 text-sm mb-1">
-                                {task.title}
-                            </h4>
+                        <div key={task.id}
+                             className={`${colors[color as keyof typeof colors]} border-2 rounded-lg p-3 hover:shadow-md transition`}>
+                            <div className="flex items-start justify-between mb-2">
+                                <h4 className="font-semibold text-gray-900 text-sm flex-1">
+                                    {task.title}
+                                </h4>
+                                <Link
+                                    href={`/tasks/${task.id}`}
+                                    className="text-gray-500 hover:text-blue-600 transition ml-2"
+                                    title="Edit task"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </Link>
+                            </div>
+
                             {task.description && (
-                                <p className="text-gray-600 text-xs mb-2 line-clamp-2">
+                                <p className="text-gray-600 text-xs mb-3 line-clamp-2">
                                     {task.description}
                                 </p>
                             )}
-                            <div className="flex items-center justify-between text-xs text-gray-600">
+
+                            <div className="space-y-2">
+                                <TaskStatusButtons taskId={task.id} currentStatus={task.status}/>
+
                                 {task.assigned_to_name ? (
-                                    <span className="flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+                                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                        </svg>
                                         {task.assigned_to_name}
-                  </span>
+                                    </div>
                                 ) : (
-                                    <span className="text-gray-400">Unassigned</span>
+                                    <span className="text-gray-400 text-xs">Unassigned</span>
                                 )}
                             </div>
                         </div>

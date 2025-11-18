@@ -206,4 +206,76 @@ export const db = {
         );
         return result.rows;
     },
+
+    async updateTaskStatus(taskId: string, status: string) {
+        const result = await pool.query(
+            `UPDATE tasks 
+     SET status = $1, updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+            [status, taskId]
+        );
+        return result.rows[0];
+    },
+
+    async updateTask(taskId: string, updates: {
+        title?: string;
+        description?: string;
+        status?: string;
+        assigned_to?: string | null;
+    }) {
+        const fields = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (updates.title !== undefined) {
+            fields.push(`title = $${paramCount++}`);
+            values.push(updates.title);
+        }
+        if (updates.description !== undefined) {
+            fields.push(`description = $${paramCount++}`);
+            values.push(updates.description);
+        }
+        if (updates.status !== undefined) {
+            fields.push(`status = $${paramCount++}`);
+            values.push(updates.status);
+        }
+        if (updates.assigned_to !== undefined) {
+            fields.push(`assigned_to = $${paramCount++}`);
+            values.push(updates.assigned_to);
+        }
+
+        fields.push(`updated_at = NOW()`);
+        values.push(taskId);
+
+        const result = await pool.query(
+            `UPDATE tasks 
+     SET ${fields.join(', ')}
+     WHERE id = $${paramCount}
+     RETURNING *`,
+            values
+        );
+        return result.rows[0];
+    },
+
+    async deleteTask(taskId: string) {
+        await pool.query('DELETE FROM tasks WHERE id = $1', [taskId]);
+    },
+
+    async getTaskById(taskId: string) {
+        const result = await pool.query(
+            `SELECT t.*, 
+      p.name as project_name,
+      p.id as project_id,
+      u_assigned.name as assigned_to_name,
+      u_created.name as created_by_name
+     FROM tasks t
+     JOIN projects p ON t.project_id = p.id
+     LEFT JOIN users u_assigned ON t.assigned_to = u_assigned.id
+     LEFT JOIN users u_created ON t.created_by = u_created.id
+     WHERE t.id = $1`,
+            [taskId]
+        );
+        return result.rows[0] || null;
+    },
 };
