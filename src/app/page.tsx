@@ -6,9 +6,12 @@ export default async function Home() {
     const auth0User = session?.user;
 
     let dbUser = null;
+    let userOrgs = [];
+
     if (auth0User) {
         try {
             dbUser = await db.findOrCreateUser(auth0User);
+            userOrgs = await db.getUserOrganizations(dbUser.id);
         } catch (error) {
             console.error('Error syncing user:', error);
         }
@@ -26,7 +29,8 @@ export default async function Home() {
                     </p>
 
                     {auth0User && dbUser ? (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
+                            {/* User Info */}
                             <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                                 <div className="flex items-center gap-4">
                                     {dbUser.avatar_url && (
@@ -41,13 +45,43 @@ export default async function Home() {
                                             ✅ {dbUser.name}
                                         </p>
                                         <p className="text-sm text-green-600">{dbUser.email}</p>
-                                        <p className="text-xs text-green-500 mt-1 font-mono">
-                                            ID: {dbUser.id}
-                                        </p>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Organizations */}
+                            <div>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-bold">Your Organizations</h2>
+                                    <a
+                                        href="/organizations/new"
+                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition
+                                        text-sm font-medium"
+                                    >
+                                        + Create Organization
+                                    </a>
+                                </div>
+
+                                <div className="grid gap-4">
+                                    {userOrgs.map((org) => (
+                                        <div key={org.id}
+                                             className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="font-semibold text-lg">{org.name}</h3>
+                                                    <p className="text-sm text-gray-500">/{org.slug}</p>
+                                                </div>
+                                                <span
+                                                    className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium uppercase">
+                          {org.role}
+                        </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Actions */}
                             <div className="flex gap-4">
                                 <a
                                     href="/auth/logout"
@@ -72,8 +106,8 @@ export default async function Home() {
                                     🔐 Please log in to access your dashboard
                                 </p>
                             </div>
-                            <a
 
+                            <a
                                 href="/auth/login"
                                 className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition text-lg"
                             >
