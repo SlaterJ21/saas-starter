@@ -333,4 +333,69 @@ export const db = {
         );
         return result.rows.length > 0;
     },
+
+    async updateUser(userId: string, updates: { name?: string; avatar_url?: string }) {
+        const fields = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (updates.name !== undefined) {
+            fields.push(`name = $${paramCount++}`);
+            values.push(updates.name);
+        }
+        if (updates.avatar_url !== undefined) {
+            fields.push(`avatar_url = $${paramCount++}`);
+            values.push(updates.avatar_url);
+        }
+
+        values.push(userId);
+
+        const result = await pool.query(
+            `UPDATE users 
+     SET ${fields.join(', ')}
+     WHERE id = $${paramCount}
+     RETURNING *`,
+            values
+        );
+        return result.rows[0];
+    },
+
+    async updateOrganization(organizationId: string, updates: { name?: string; slug?: string }) {
+        const fields = [];
+        const values = [];
+        let paramCount = 1;
+
+        if (updates.name !== undefined) {
+            fields.push(`name = $${paramCount++}`);
+            values.push(updates.name);
+        }
+        if (updates.slug !== undefined) {
+            fields.push(`slug = $${paramCount++}`);
+            values.push(updates.slug);
+        }
+
+        fields.push(`updated_at = NOW()`);
+        values.push(organizationId);
+
+        const result = await pool.query(
+            `UPDATE organizations 
+     SET ${fields.join(', ')}
+     WHERE id = $${paramCount}
+     RETURNING *`,
+            values
+        );
+        return result.rows[0];
+    },
+
+    async deleteOrganization(organizationId: string) {
+        await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
+    },
+
+    async getOrganizationMemberCount(organizationId: string): Promise<number> {
+        const result = await pool.query(
+            'SELECT COUNT(*) as count FROM organization_members WHERE organization_id = $1',
+            [organizationId]
+        );
+        return parseInt(result.rows[0].count);
+    },
 };
