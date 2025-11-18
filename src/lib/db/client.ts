@@ -170,4 +170,40 @@ export const db = {
         );
         return result.rows[0];
     },
+
+    async getProjectById(projectId: string) {
+        const result = await pool.query(
+            `SELECT p.*, 
+      u.name as creator_name,
+      u.email as creator_email,
+      o.name as organization_name
+     FROM projects p
+     LEFT JOIN users u ON p.created_by = u.id
+     LEFT JOIN organizations o ON p.organization_id = o.id
+     WHERE p.id = $1`,
+            [projectId]
+        );
+        return result.rows[0] || null;
+    },
+
+    async getTasksByProject(projectId: string) {
+        const result = await pool.query(
+            `SELECT t.*, 
+      u_assigned.name as assigned_to_name,
+      u_created.name as created_by_name
+     FROM tasks t
+     LEFT JOIN users u_assigned ON t.assigned_to = u_assigned.id
+     LEFT JOIN users u_created ON t.created_by = u_created.id
+     WHERE t.project_id = $1
+     ORDER BY 
+       CASE t.status 
+         WHEN 'todo' THEN 1
+         WHEN 'in_progress' THEN 2
+         WHEN 'done' THEN 3
+       END,
+       t.created_at DESC`,
+            [projectId]
+        );
+        return result.rows;
+    },
 };
