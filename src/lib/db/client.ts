@@ -102,4 +102,22 @@ export const db = {
 
     return user;
   },
+  async getOrganizationById(orgId: string) {
+    const result = await pool.query(
+        'SELECT * FROM organizations WHERE id = $1',
+        [orgId]
+    );
+    return result.rows[0] || null;
+  },
+
+  async getUserOrgMembership(userId: string, orgId: string) {
+    const result = await pool.query(
+        `SELECT om.*, o.name, o.slug 
+     FROM organization_members om
+     JOIN organizations o ON o.id = om.organization_id
+     WHERE om.user_id = $1 AND om.organization_id = $2`,
+        [userId, orgId]
+    );
+    return result.rows[0] || null;
+  },
 };
