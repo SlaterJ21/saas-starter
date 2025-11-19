@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import * as Sentry from '@sentry/nextjs';
 
 const { logger } = Sentry;
@@ -13,6 +14,8 @@ export async function GET() {
         },
         async () => {
             const startTime = Date.now();
+            const headersList = await headers();
+            const requestId = headersList.get('x-request-id');
 
             const health = {
                 status: 'healthy' as 'healthy' | 'degraded' | 'unhealthy',
@@ -24,6 +27,7 @@ export async function GET() {
                 },
                 version: process.env.npm_package_version || 'unknown',
                 environment: process.env.NODE_ENV,
+                requestId,
             };
 
             const responseTime = Date.now() - startTime;
@@ -31,6 +35,7 @@ export async function GET() {
             logger.info('Health check performed', {
                 status: health.status,
                 responseTime,
+                requestId,
             });
 
             return NextResponse.json(health, {
