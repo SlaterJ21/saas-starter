@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql
+  namespace: saas-starter
+  labels:
+    app: graphql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graphql
+  template:
+    metadata:
+      labels:
+        app: graphql
+    spec:
+      containers:
+        - name: graphql
+          image: graphile/postgraphile:latest
+          ports:
+            - containerPort: 5000
+              name: graphql
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: saas-starter-secrets
+                  key: DATABASE_URL
+          # NO command field - use image default
+          args:
+            - "--connection"
+            - "$(DATABASE_URL)"
+            - "--schema"
+            - "public"
+            - "--enhance-graphiql"
+            - "--dynamic-json"
+            - "--graphiql"
+            - "/"
+            - "--port"
+            - "5000"
+            - "--host"
+            - "0.0.0.0"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /graphql
+              port: 500
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /graphql
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
