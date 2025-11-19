@@ -187,6 +187,138 @@ Visit `/status` for real-time system monitoring with:
 
 ## 🚀 Deployment
 
+## ☸️ Kubernetes Deployment
+
+This application is designed to run in Kubernetes for production-grade container orchestration.
+
+### Prerequisites
+- `kubectl` installed
+- Local Kubernetes cluster (kind, minikube, or Docker Desktop)
+- Docker for building images
+
+### Quick Start with Kind
+
+1. **Install kind (Kubernetes in Docker)**
+```bash
+   # macOS
+   brew install kind
+   
+   # Or download binary
+   # https://kind.sigs.k8s.io/docs/user/quick-start/#installation
+```
+
+2. **Create a local cluster**
+```bash
+   kind create cluster --name saas-starter
+```
+
+3. **Build and load Docker image**
+```bash
+   docker build -t saas-starter:latest .
+   kind load docker-image saas-starter:latest --name saas-starter
+```
+
+4. **Deploy to Kubernetes**
+```bash
+   kubectl apply -f k8s/
+```
+
+5. **Access the application**
+```bash
+   kubectl port-forward service/saas-starter 3000:3000
+```
+
+Visit: http://localhost:3000
+
+### Kubernetes Resources
+
+The `k8s/` directory contains:
+- **namespace.yaml** - Isolated namespace for the app
+- **configmap.yaml** - Non-sensitive configuration
+- **secret.yaml** - Sensitive credentials (Auth0, database)
+- **postgres-deployment.yaml** - PostgreSQL database
+- **postgres-service.yaml** - Database service
+- **graphql-deployment.yaml** - PostGraphile GraphQL API
+- **graphql-service.yaml** - GraphQL service
+- **app-deployment.yaml** - Next.js application
+- **app-service.yaml** - Application service
+- **ingress.yaml** - HTTP routing (optional)
+
+### Features
+- **High Availability** - Multiple replicas for resilience
+- **Health Checks** - Liveness and readiness probes
+- **Resource Limits** - CPU and memory constraints
+- **Auto-scaling** - Horizontal Pod Autoscaler ready
+- **Rolling Updates** - Zero-downtime deployments
+- **Secrets Management** - Encrypted credential storage
+
+### Monitoring in Kubernetes
+
+Health check endpoints integrated with K8s probes:
+```yaml
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+### Production Kubernetes
+
+For production deployments:
+- **AWS EKS** - Managed Kubernetes on AWS
+- **Google GKE** - Google Kubernetes Engine
+- **Azure AKS** - Azure Kubernetes Service
+- **DigitalOcean** - Managed Kubernetes
+
+### Useful Commands
+```bash
+# Check cluster status
+kubectl cluster-info
+
+# View all resources
+kubectl get all -n saas-starter
+
+# View logs
+kubectl logs -f deployment/saas-starter-app -n saas-starter
+
+# Scale application
+kubectl scale deployment/saas-starter-app --replicas=3 -n saas-starter
+
+# Delete cluster
+kind delete cluster --name saas-starter
+```
+
+### Architecture
+```
+┌─────────────────────────────────────────┐
+│           Kubernetes Cluster            │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │      Namespace: saas-starter     │   │
+│  │                                  │   │
+│  │  ┌──────────┐  ┌──────────┐     │   │
+│  │  │   App    │  │ GraphQL  │     │   │
+│  │  │  Pods    │  │   Pods   │     │   │
+│  │  └────┬─────┘  └────┬─────┘     │   │
+│  │       │             │            │   │
+│  │  ┌────▼─────────────▼─────┐     │   │
+│  │  │    PostgreSQL Pod      │     │   │
+│  │  └────────────────────────┘     │   │
+│  │                                  │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
 ### Production Checklist
 - [ ] Set up production Auth0 application
 - [ ] Configure production database (e.g., AWS RDS, Supabase)
@@ -236,6 +368,8 @@ MIT License - feel free to use this as a starting point for your own projects!
 
 ## 🎯 Roadmap
 
+## 🎯 Roadmap
+
 ### Completed ✅
 - Multi-tenant architecture
 - Authentication with Auth0
@@ -246,9 +380,13 @@ MIT License - feel free to use this as a starting point for your own projects!
 - Health checks and status page
 - Request logging and tracing
 
-### Planned 🚧
+### In Progress 🚧
+- **Kubernetes deployment** - Local cluster setup with kind
+- Production-ready Docker images
+- K8s manifests for all services
+
+### Planned 📋
 - Docker production optimization
-- Kubernetes deployment
 - CI/CD pipeline with GitHub Actions
 - Email notifications
 - File uploads
@@ -256,13 +394,13 @@ MIT License - feel free to use this as a starting point for your own projects!
 - Advanced analytics dashboard
 - API rate limiting
 - Webhook support
+- Production K8s deployment (EKS/GKE/AKS)
 
 ## 📞 Contact
 
-Built by [Your Name] - [Your Email/LinkedIn]
+Built by Jeffry Slater - slaterj4e@gmail.com
 
-**Portfolio:** [Your Portfolio URL]  
-**GitHub:** [Your GitHub Profile]
+**GitHub:** github.com/SlaterJ21
 
 ---
 
