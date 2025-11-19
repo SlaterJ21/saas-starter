@@ -1,6 +1,7 @@
-import { auth0 } from '@/lib/auth0';
-import { redirect } from 'next/navigation';
-import { db } from '@/lib/db/client';
+import {auth0} from '@/lib/auth0';
+import {redirect} from 'next/navigation';
+import {db} from '@/lib/db/client';
+import Link from "next/link";
 
 async function createOrganization(formData: FormData) {
     'use server';
@@ -91,16 +92,16 @@ export default async function NewOrganizationPage() {
                                 Create Organization
                             </button>
 
-<a
-                            href="/"
-                            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
+                            <Link
+                                href="/"
+                                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
                             >
-                            Cancel
-                        </a>
+                                Cancel
+                            </Link>
+                        </div>
+                    </form>
                 </div>
-            </form>
-        </div>
-</div>
-</main>
-);
+            </div>
+        </main>
+    );
 }

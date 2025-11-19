@@ -3,6 +3,7 @@ import {db} from '@/lib/db/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import {getCurrentOrgId} from '@/lib/org/current';
 import {redirect} from 'next/navigation';
+import Link from "next/link";
 
 async function createTask(formData: FormData) {
     'use server';
@@ -166,7 +167,7 @@ export default async function TasksPage() {
                             No projects found
                         </p>
                         <p className="text-yellow-700 text-sm">
-                            <a href="/projects" className="underline font-medium">Create a project</a> first before
+                            <Link href="/projects" className="underline font-medium">Create a project</Link> first before
                             adding tasks
                         </p>
                     </div>

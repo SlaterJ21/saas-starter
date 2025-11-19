@@ -1,5 +1,5 @@
 'use client';
-
+import Image from 'next/image';
 import { useState } from 'react';
 
 type Props = {
@@ -43,7 +43,7 @@ export default function Avatar({ name, imageUrl, size = 'md' }: Props) {
 
     if (imageUrl && !imageError) {
         return (
-            <img
+            <Image
                 src={imageUrl}
                 alt={name}
                 className={`${sizes[size]} rounded-full object-cover`}

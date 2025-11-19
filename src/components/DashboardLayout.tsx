@@ -52,7 +52,7 @@ export default async function DashboardLayout({children}: Props) {
 
                         {/* User Menu */}
                         <div className="flex items-center gap-4">
-                            <a
+                            <Link
                                 href="http://localhost:5001/graphiql"
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -63,7 +63,7 @@ export default async function DashboardLayout({children}: Props) {
                                           d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                                 </svg>
                                 GraphiQL
-                            </a>
+                            </Link>
 
                             <div className="flex items-center gap-3 px-4 py-2 bg-gray-100 rounded-lg">
                                 <Avatar name={user.name || 'User'} imageUrl={user.avatar_url} size="sm"/>
@@ -73,12 +73,12 @@ export default async function DashboardLayout({children}: Props) {
                                 </div>
                             </div>
 
-                            <a
+                            <Link
                                 href="/auth/logout"
                                 className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition"
                             >
                                 Logout
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </div>

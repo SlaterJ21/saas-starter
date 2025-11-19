@@ -69,7 +69,7 @@ export default async function ProjectsPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
-                        <p className="text-gray-600 mt-1">Manage your organization's projects</p>
+                        <p className="text-gray-600 mt-1">Manage your organization&apos;s projects</p>
                     </div>
                 </div>
 

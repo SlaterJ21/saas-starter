@@ -2,6 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs';
 import {useEffect} from 'react';
+import Link from "next/link";
 
 export default function ErrorBoundary({
                                           error,
@@ -35,7 +36,7 @@ export default function ErrorBoundary({
                     </h2>
 
                     <p className="text-gray-600 mb-4">
-                        We've been notified and will look into it.
+                        We&apos;ve been notified and will look into it.
                     </p>
 
                     {error.digest && (
@@ -52,12 +53,12 @@ export default function ErrorBoundary({
                             Try Again
                         </button>
 
-                        <a
+                        <Link
                             href="/"
                             className="block w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold text-center"
                         >
                             Go Home
-                        </a>
+                        </Link>
                     </div>
 
                     {process.env.NODE_ENV === 'development' && (

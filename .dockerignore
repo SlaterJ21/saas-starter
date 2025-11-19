@@ -8,6 +8,7 @@ out
 
 # Development
 .env.local
+.env*.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -20,6 +21,7 @@ out
 
 # Git
 .git
+.github
 .gitignore
 
 # Docker
