@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: saas-starter
+  labels:
+    name: saas-starter
+    app: saas-starter-app

@@ -203,8 +203,9 @@ This application is designed to run in Kubernetes for production-grade container
    # macOS
    brew install kind
    
-   # Or download binary
-   # https://kind.sigs.k8s.io/docs/user/quick-start/#installation
+   # Verify installation
+   kind version
+   kubectl version --client
 ```
 
 2. **Create a local cluster**
@@ -214,21 +215,98 @@ This application is designed to run in Kubernetes for production-grade container
 
 3. **Build and load Docker image**
 ```bash
+   # Build the Docker image
    docker build -t saas-starter:latest .
+   
+   # Load image into kind cluster
    kind load docker-image saas-starter:latest --name saas-starter
 ```
 
-4. **Deploy to Kubernetes**
+4. **Update Kubernetes secrets with your credentials**
+
+   Edit `k8s/secret.yaml` and replace the placeholder values:
 ```bash
+   # Edit the secret file
+   nano k8s/secret.yaml
+   
+   # Update these values:
+   # - AUTH0_SECRET (generate with: openssl rand -hex 32)
+   # - AUTH0_DOMAIN (your Auth0 domain)
+   # - AUTH0_CLIENT_ID (from Auth0 dashboard)
+   # - AUTH0_CLIENT_SECRET (from Auth0 dashboard)
+```
+
+5. **Deploy to Kubernetes**
+```bash
+   # Deploy all resources
    kubectl apply -f k8s/
+   
+   # Watch pods start up
+   kubectl get pods -n saas-starter -w
 ```
 
-5. **Access the application**
+6. **Initialize database schema**
 ```bash
-   kubectl port-forward service/saas-starter 3000:3000
+   # Copy schema to PostgreSQL pod
+   kubectl cp database/schema.sql saas-starter/$(kubectl get pod -n saas-starter -l app=postgres -o jsonpath='{.items[0].metadata.name}'):/tmp/schema.sql
+   
+   # Execute schema
+   kubectl exec -it deployment/postgres -n saas-starter -- psql -U postgres -d saas_starter_prod -f /tmp/schema.sql
+   
+   # Verify tables were created
+   kubectl exec -it deployment/postgres -n saas-starter -- psql -U postgres -d saas_starter_prod -c "\dt"
 ```
 
+7. **Access the application**
+```bash
+   # Port forward to access locally
+   kubectl port-forward service/saas-starter 3000:3000 -n saas-starter
+```
 Visit: http://localhost:3000
+
+### Troubleshooting Kubernetes Deployment
+
+**Pods not starting:**
+```bash
+# Check pod status
+kubectl get pods -n saas-starter
+
+# View pod logs
+kubectl logs -f deployment/postgres -n saas-starter
+kubectl logs -f deployment/graphql -n saas-starter
+kubectl logs -f deployment/saas-starter-app -n saas-starter
+
+# Describe pod for events
+kubectl describe pod  -n saas-starter
+```
+
+**Database connection issues:**
+```bash
+# Test PostgreSQL connectivity
+kubectl exec -it deployment/postgres -n saas-starter -- psql -U postgres -d saas_starter_prod -c "SELECT version();"
+
+# Check service DNS
+kubectl exec -it deployment/saas-starter-app -n saas-starter -- nslookup postgres-service
+```
+
+**Image not found:**
+```bash
+# Rebuild and reload image
+docker build -t saas-starter:latest .
+kind load docker-image saas-starter:latest --name saas-starter
+
+# Restart deployment
+kubectl rollout restart deployment/saas-starter-app -n saas-starter
+```
+
+**Clean slate (delete everything):**
+```bash
+# Delete all resources
+kubectl delete namespace saas-starter
+
+# Delete kind cluster
+kind delete cluster --name saas-starter
+```
 
 ### Kubernetes Resources
 
