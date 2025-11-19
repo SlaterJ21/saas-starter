@@ -1,4 +1,6 @@
 import {Pool} from 'pg';
+import {logger} from "@sentry/nextjs";
+import * as Sentry from "@sentry/nextjs";
 
 if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
@@ -33,13 +35,34 @@ export const db = {
     },
 
     async createUser(auth0Id: string, email: string, name?: string, avatarUrl?: string) {
-        const result = await pool.query(
-            `INSERT INTO users (auth0_id, email, name, avatar_url) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING *`,
-            [auth0Id, email, name, avatarUrl]
+        return Sentry.startSpan(
+            {
+                op: 'db.mutation',
+                name: 'createUser',
+            },
+            async (span) => {
+                span?.setAttribute('email', email);
+                span?.setAttribute('auth0_id', auth0Id);
+
+                console.log('Creating user with auth0Id:', auth0Id); // Debug log
+
+                logger.info('Creating new user', { email, auth0Id });
+
+                const result = await pool.query(
+                    `INSERT INTO users (auth0_id, email, name, avatar_url) 
+         VALUES ($1, $2, $3, $4) 
+         RETURNING *`,
+                    [auth0Id, email, name, avatarUrl]  // Array of parameters
+                );
+
+                logger.info('User created successfully', {
+                    userId: result.rows[0].id,
+                    email
+                });
+
+                return result.rows[0];
+            }
         );
-        return result.rows[0];
     },
 
     async createOrganization(name: string, slug: string, createdBy: string) {
@@ -74,30 +97,32 @@ export const db = {
         return result.rows;
     },
 
-    async findOrCreateUser(auth0User: any) {
-        // Try to find existing user
-        let user = await this.findUserByAuth0Id(auth0User.sub);
+    async findOrCreateUser(auth0User: {
+        auth0Id: string;
+        email: string;
+        name?: string;
+        picture?: string;
+    }) {
+        let user = await this.findUserByAuth0Id(auth0User.auth0Id);
 
         if (!user) {
-            // Create new user
+            console.log('User not found, creating with:', auth0User); // Debug log
             user = await this.createUser(
-                auth0User.sub,
+                auth0User.auth0Id,
                 auth0User.email,
                 auth0User.name,
                 auth0User.picture
             );
-            console.log('✅ Created new user:', user.id, user.email);
 
-            // Create personal organization for new user
-            const personalOrgName = `${auth0User.name || 'My'}'s Workspace`;
-            const slug = `${auth0User.email.split('@')[0]}-${user.id.split('-')[0]}`;
+            // Auto-create personal organization for new users
+            const personalOrgSlug = `${auth0User.email.split('@')[0]}-personal-${Date.now()}`;
+            const personalOrg = await this.createOrganization(
+                `${auth0User.name || auth0User.email}'s Organization`,
+                personalOrgSlug,
+                user.id
+            );
 
-            const org = await this.createOrganization(personalOrgName, slug, user.id);
-            console.log('✅ Created personal organization:', org.id, org.name);
-
-            // Add user as owner
-            await this.addUserToOrganization(user.id, org.id, 'owner');
-            console.log('✅ Added user as owner of organization');
+            await this.addUserToOrganization(user.id, personalOrg.id, 'owner');
         }
 
         return user;
