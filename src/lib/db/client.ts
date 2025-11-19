@@ -2,6 +2,9 @@ import {Pool} from 'pg';
 import {logger} from "@sentry/nextjs";
 import * as Sentry from "@sentry/nextjs";
 
+// Allow missing DATABASE_URL during build
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build';
+
 if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
 }
