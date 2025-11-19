@@ -48,6 +48,7 @@ A production-ready, multi-tenant SaaS application built with modern technologies
 
 ### DevOps & Monitoring
 - **Docker & Docker Compose** - Containerized development environment
+- **Kubernetes** - Container orchestration with kind
 - **Sentry** - Error tracking and performance monitoring
 - **Health Checks** - System monitoring endpoints
 
@@ -80,20 +81,21 @@ A production-ready, multi-tenant SaaS application built with modern technologies
 Fill in the following variables:
 ```env
    # Database
-   DATABASE_URL=postgresql://postgres:postgres@localhost:5433/saas_starter_dev
+   DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/saas_starter_dev
    
    # Auth0
    AUTH0_SECRET=<generate with: openssl rand -hex 32>
-   AUTH0_BASE_URL=http://localhost:3000
-   AUTH0_ISSUER_BASE_URL=https://YOUR_DOMAIN.auth0.com
-   AUTH0_CLIENT_ID=<your-auth0-client-id>
-   AUTH0_CLIENT_SECRET=<your-auth0-client-secret>
+   AUTH0_DOMAIN=your-domain.auth0.com
+   AUTH0_CLIENT_ID=your-auth0-client-id
+   AUTH0_CLIENT_SECRET=your-auth0-client-secret
+   APP_BASE_URL=http://localhost:3000
    
-   # GraphQL
+   # GraphQL (optional - for direct API access)
    GRAPHQL_URL=http://localhost:5001/graphql
    
    # Sentry (optional)
-   NEXT_PUBLIC_SENTRY_DSN=<your-sentry-dsn>
+   SENTRY_AUTH_TOKEN=your-sentry-token
+   NEXT_PUBLIC_SENTRY_DSN=your-sentry-dsn
 ```
 
 4. **Start the database**
@@ -101,17 +103,12 @@ Fill in the following variables:
    docker-compose up -d
 ```
 
-5. **Run database migrations**
-```bash
-   npm run db:migrate
-```
-
-6. **Start the development server**
+5. **Start the development server**
 ```bash
    npm run dev
 ```
 
-7. **Start GraphQL API (in another terminal)**
+6. **Start GraphQL API (in another terminal)**
 ```bash
    npm run graphql
 ```
@@ -144,7 +141,9 @@ saas-starter-kit/
 │   └── proxy.ts              # Request logging middleware
 ├── database/
 │   └── schema.sql            # PostgreSQL schema
+├── k8s/                      # Kubernetes manifests
 ├── docker-compose.yml        # Docker services
+├── Dockerfile                # Production container image
 └── package.json
 ```
 
@@ -185,232 +184,92 @@ Visit `/status` for real-time system monitoring with:
 - Request ID tracking
 - Custom instrumentation
 
-## 🚀 Deployment
-
 ## ☸️ Kubernetes Deployment
 
-This application is designed to run in Kubernetes for production-grade container orchestration.
+### Local Development with kind
 
-### Prerequisites
-- `kubectl` installed
-- Local Kubernetes cluster (kind, minikube, or Docker Desktop)
-- Docker for building images
-
-### Quick Start with Kind
-
-1. **Install kind (Kubernetes in Docker)**
+1. **Install kind**
 ```bash
-   # macOS
    brew install kind
-   
-   # Verify installation
-   kind version
-   kubectl version --client
-```
-
-2. **Create a local cluster**
-```bash
    kind create cluster --name saas-starter
 ```
 
-3. **Build and load Docker image**
+2. **Build and load image**
 ```bash
-   # Build the Docker image
    docker build -t saas-starter:latest .
-   
-   # Load image into kind cluster
    kind load docker-image saas-starter:latest --name saas-starter
 ```
 
-4. **Update Kubernetes secrets with your credentials**
-
-   Edit `k8s/secret.yaml` and replace the placeholder values:
+3. **Deploy to cluster**
 ```bash
-   # Edit the secret file
-   nano k8s/secret.yaml
-   
-   # Update these values:
-   # - AUTH0_SECRET (generate with: openssl rand -hex 32)
-   # - AUTH0_DOMAIN (your Auth0 domain)
-   # - AUTH0_CLIENT_ID (from Auth0 dashboard)
-   # - AUTH0_CLIENT_SECRET (from Auth0 dashboard)
-```
-
-5. **Deploy to Kubernetes**
-```bash
-   # Deploy all resources
    kubectl apply -f k8s/
-   
-   # Watch pods start up
    kubectl get pods -n saas-starter -w
 ```
 
-6. **Initialize database schema**
+4. **Initialize database**
 ```bash
-   # Copy schema to PostgreSQL pod
    kubectl cp database/schema.sql saas-starter/$(kubectl get pod -n saas-starter -l app=postgres -o jsonpath='{.items[0].metadata.name}'):/tmp/schema.sql
-   
-   # Execute schema
    kubectl exec -it deployment/postgres -n saas-starter -- psql -U postgres -d saas_starter_prod -f /tmp/schema.sql
-   
-   # Verify tables were created
-   kubectl exec -it deployment/postgres -n saas-starter -- psql -U postgres -d saas_starter_prod -c "\dt"
 ```
 
-7. **Access the application**
+5. **Access the application**
 ```bash
-   # Port forward to access locally
-   kubectl port-forward service/saas-starter 3000:3000 -n saas-starter
+   kubectl port-forward service/saas-starter-app 8080:3000 -n saas-starter
 ```
-Visit: http://localhost:3000
+Visit: http://localhost:8080
 
-### Troubleshooting Kubernetes Deployment
-
-**Pods not starting:**
-```bash
-# Check pod status
-kubectl get pods -n saas-starter
-
-# View pod logs
-kubectl logs -f deployment/postgres -n saas-starter
-kubectl logs -f deployment/graphql -n saas-starter
-kubectl logs -f deployment/saas-starter-app -n saas-starter
-
-# Describe pod for events
-kubectl describe pod  -n saas-starter
+### Deployment Architecture
 ```
-
-**Database connection issues:**
-```bash
-# Test PostgreSQL connectivity
-kubectl exec -it deployment/postgres -n saas-starter -- psql -U postgres -d saas_starter_prod -c "SELECT version();"
-
-# Check service DNS
-kubectl exec -it deployment/saas-starter-app -n saas-starter -- nslookup postgres-service
-```
-
-**Image not found:**
-```bash
-# Rebuild and reload image
-docker build -t saas-starter:latest .
-kind load docker-image saas-starter:latest --name saas-starter
-
-# Restart deployment
-kubectl rollout restart deployment/saas-starter-app -n saas-starter
+┌─────────────────────────────────────────────────┐
+│        Kubernetes Cluster (kind)                │
+│                                                  │
+│  ┌────────────────────────────────────────┐    │
+│  │    Namespace: saas-starter             │    │
+│  │                                         │    │
+│  │  ┌──────────────┐  Port 3000          │    │
+│  │  │  Next.js App  │◄────────────────┐  │    │
+│  │  └───────┬──────┘                   │  │    │
+│  │          │                           │  │    │
+│  │          │ http://graphql-service:5001│    │
+│  │          ▼                           │  │    │
+│  │  ┌──────────────┐  Port 5001        │  │    │
+│  │  │ GraphQL API   │                   │  │    │
+│  │  └───────┬──────┘                   │  │    │
+│  │          │                           │  │    │
+│  │          │ postgres-service:5432     │  │    │
+│  │          ▼                           │  │    │
+│  │  ┌──────────────┐  Port 5432        │  │    │
+│  │  │  PostgreSQL   │                   │  │    │
+│  │  │  + 5GB PVC    │                   │  │    │
+│  │  └──────────────┘                   │  │    │
+│  │                                       │  │    │
+│  └───────────────────────────────────────┘  │    │
+│                                              │    │
+│  Port Forwarding for Local Access:          │    │
+│  localhost:8080 ──────────────────────────┘    │
+│                                                  │
+└─────────────────────────────────────────────────┘
 ```
 
-**Clean slate (delete everything):**
-```bash
-# Delete all resources
-kubectl delete namespace saas-starter
-
-# Delete kind cluster
-kind delete cluster --name saas-starter
-```
-
-### Kubernetes Resources
-
-The `k8s/` directory contains:
-- **namespace.yaml** - Isolated namespace for the app
-- **configmap.yaml** - Non-sensitive configuration
-- **secret.yaml** - Sensitive credentials (Auth0, database)
-- **postgres-deployment.yaml** - PostgreSQL database
-- **postgres-service.yaml** - Database service
-- **graphql-deployment.yaml** - PostGraphile GraphQL API
-- **graphql-service.yaml** - GraphQL service
-- **app-deployment.yaml** - Next.js application
-- **app-service.yaml** - Application service
-- **ingress.yaml** - HTTP routing (optional)
-
-### Features
-- **High Availability** - Multiple replicas for resilience
-- **Health Checks** - Liveness and readiness probes
+### Kubernetes Features
+- **Persistent Storage** - 5GB volume for PostgreSQL data
+- **Health Probes** - Liveness and readiness checks
 - **Resource Limits** - CPU and memory constraints
-- **Auto-scaling** - Horizontal Pod Autoscaler ready
-- **Rolling Updates** - Zero-downtime deployments
-- **Secrets Management** - Encrypted credential storage
+- **Internal Networking** - Service-to-service via DNS
+- **ConfigMaps & Secrets** - Configuration management
 
-### Monitoring in Kubernetes
+### ⚠️ Production Deployment Notes
 
-Health check endpoints integrated with K8s probes:
-```yaml
-livenessProbe:
-  httpGet:
-    path: /api/health
-    port: 3000
-  initialDelaySeconds: 30
-  periodSeconds: 10
+Before deploying to production:
 
-readinessProbe:
-  httpGet:
-    path: /api/health
-    port: 3000
-  initialDelaySeconds: 5
-  periodSeconds: 5
-```
+1. **Update `k8s/secret.yaml`** with real credentials
+2. **Use managed database** (AWS RDS, GCP CloudSQL, etc.)
+3. **Configure ingress** for domain routing
+4. **Enable TLS/SSL** with cert-manager
+5. **Set up monitoring** with Prometheus/Grafana
+6. **Configure backups** for persistent data
 
-### Production Kubernetes
-
-For production deployments:
-- **AWS EKS** - Managed Kubernetes on AWS
-- **Google GKE** - Google Kubernetes Engine
-- **Azure AKS** - Azure Kubernetes Service
-- **DigitalOcean** - Managed Kubernetes
-
-### Useful Commands
-```bash
-# Check cluster status
-kubectl cluster-info
-
-# View all resources
-kubectl get all -n saas-starter
-
-# View logs
-kubectl logs -f deployment/saas-starter-app -n saas-starter
-
-# Scale application
-kubectl scale deployment/saas-starter-app --replicas=3 -n saas-starter
-
-# Delete cluster
-kind delete cluster --name saas-starter
-```
-
-### Architecture
-```
-┌─────────────────────────────────────────┐
-│           Kubernetes Cluster            │
-│                                         │
-│  ┌─────────────────────────────────┐   │
-│  │      Namespace: saas-starter     │   │
-│  │                                  │   │
-│  │  ┌──────────┐  ┌──────────┐     │   │
-│  │  │   App    │  │ GraphQL  │     │   │
-│  │  │  Pods    │  │   Pods   │     │   │
-│  │  └────┬─────┘  └────┬─────┘     │   │
-│  │       │             │            │   │
-│  │  ┌────▼─────────────▼─────┐     │   │
-│  │  │    PostgreSQL Pod      │     │   │
-│  │  └────────────────────────┘     │   │
-│  │                                  │   │
-│  └─────────────────────────────────┘   │
-│                                         │
-└─────────────────────────────────────────┘
-```
-
-### Production Checklist
-- [ ] Set up production Auth0 application
-- [ ] Configure production database (e.g., AWS RDS, Supabase)
-- [ ] Set up Sentry project for production
-- [ ] Configure environment variables in hosting platform
-- [ ] Enable SSL/HTTPS
-- [ ] Set up monitoring alerts
-- [ ] Configure backup strategy
-
-### Recommended Platforms
-- **Vercel** - Zero-config Next.js deployment
-- **Railway** - PostgreSQL + app hosting
-- **Render** - Full-stack deployment
-- **AWS** - Production-grade infrastructure
+See `k8s/README.md` for detailed Kubernetes documentation.
 
 ## 🧪 Development
 
@@ -420,7 +279,6 @@ npm run dev          # Start Next.js dev server
 npm run build        # Build for production
 npm run start        # Start production server
 npm run graphql      # Start GraphQL API server
-npm run db:migrate   # Run database migrations
 ```
 
 ### Code Quality
@@ -436,50 +294,49 @@ npm run db:migrate   # Run database migrations
 - **Caching Strategy** - Optimized data fetching
 - **Request Tracing** - Unique IDs for debugging
 
-## 🤝 Contributing
-
-This is a personal project/portfolio piece, but suggestions are welcome!
-
-## 📄 License
-
-MIT License - feel free to use this as a starting point for your own projects!
-
-## 🎯 Roadmap
-
 ## 🎯 Roadmap
 
 ### Completed ✅
-- Multi-tenant architecture
-- Authentication with Auth0
-- Project and task management
-- Team collaboration
-- Error tracking with Sentry
-- Performance monitoring
-- Health checks and status page
-- Request logging and tracing
+- Multi-tenant architecture with role-based access control
+- Authentication with Auth0 (Google OAuth)
+- Project and task management with Kanban boards
+- Team collaboration and member management
+- Error tracking with Sentry (distributed tracing)
+- Performance monitoring and instrumentation
+- Health checks and status dashboard
+- Request logging with unique request IDs
+- Production-ready Docker images with multi-stage builds
+- Complete Kubernetes deployment with kind
+   - PostgreSQL with persistent storage
+   - GraphQL API (PostGraphile v4.14.1)
+   - Next.js application
+   - ConfigMaps and Secrets
+   - Health probes and resource limits
+   - Internal service networking
 
 ### In Progress 🚧
-- **Kubernetes deployment** - Local cluster setup with kind
-- Production-ready Docker images
-- K8s manifests for all services
+- Production Kubernetes deployment (AWS EKS/GKE/AKS)
+- CI/CD pipeline with GitHub Actions
+- Ingress configuration for domain routing
 
 ### Planned 📋
-- Docker production optimization
-- CI/CD pipeline with GitHub Actions
-- Email notifications
-- File uploads
-- Activity feed
+- Horizontal Pod Autoscaler for auto-scaling
+- Email notifications via SendGrid/AWS SES
+- File uploads with S3 integration
 - Advanced analytics dashboard
-- API rate limiting
-- Webhook support
-- Production K8s deployment (EKS/GKE/AKS)
+- API rate limiting with Redis
+- Webhook support for integrations
+- Network policies for enhanced security
+- Secrets management with Sealed Secrets or Vault
 
 ## 📞 Contact
 
-Built by Jeffry Slater - slaterj4e@gmail.com
+Built by **Jeffry Slater**
 
-**GitHub:** github.com/SlaterJ21
+- **Email:** slaterj4e@gmail.com
+- **GitHub:** [github.com/SlaterJ21](https://github.com/SlaterJ21)
+- **Portfolio:** [Add your portfolio URL]
 
 ---
 
-Built with ❤️ using Next.js, PostgreSQL, and modern DevOps practices.
+Built with ❤️ using Next.js, PostgreSQL, Kubernetes, and modern DevOps practices.
