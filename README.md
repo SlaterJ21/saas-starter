@@ -271,6 +271,69 @@ Before deploying to production:
 
 See `k8s/README.md` for detailed Kubernetes documentation.
 
+
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+The project uses GitHub Actions for continuous integration and deployment.
+
+**Pipeline Jobs:**
+
+1. **Lint and Type Check**
+  - Runs ESLint on all code
+  - TypeScript type validation
+  - Ensures code quality before build
+
+2. **Build Docker Image**
+  - Multi-stage Docker build
+  - Pushes to GitHub Container Registry
+  - Automatic image tagging (branch, SHA)
+  - Layer caching for faster builds
+
+3. **Security Scan**
+  - Trivy vulnerability scanning
+  - Checks for CRITICAL and HIGH severity issues
+  - Results visible in Actions logs
+
+**Trigger:** Automatic on push to `main` branch or pull requests
+
+**View Pipeline:** Go to repository → Actions tab
+
+### Container Registry
+
+Docker images are automatically published to:
+```
+ghcr.io/slaterj21/saas-starter:main
+```
+
+**Pull the latest image:**
+```bash
+docker pull ghcr.io/slaterj21/saas-starter:main
+```
+
+### Pipeline Status
+
+Current status: ✅ All jobs passing
+
+- ✅ Lint and type checking
+- ✅ Docker image builds successfully
+- ⚠️  Security scan runs (SARIF upload pending)
+
+### Local Pipeline Testing
+
+Test the build locally before pushing:
+```bash
+# Run lint
+npm run lint
+
+# Type check
+npm run type-check
+
+# Build Docker image
+docker build -t saas-starter:test .
+```
+
 ## 🧪 Development
 
 ### Available Scripts
