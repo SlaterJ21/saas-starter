@@ -1,22 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
+import {useEffect} from 'react';
 import * as Sentry from '@sentry/nextjs';
+import Link from "next/link";
 
-export default function GlobalError({
-                                        error,
-                                        reset,
-                                    }: {
+export default function Error({
+                                  error,
+                                  reset,
+                              }: {
     error: Error & { digest?: string };
     reset: () => void;
 }) {
     useEffect(() => {
+        // Log error to Sentry
         Sentry.captureException(error);
     }, [error]);
 
     return (
-        <html>
-        <body>
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
             <div className="max-w-md w-full">
                 <div className="bg-white rounded-lg border-2 border-red-300 p-8 text-center">
@@ -37,23 +37,38 @@ export default function GlobalError({
                     </div>
 
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                        Application Error
+                        Something went wrong
                     </h2>
 
                     <p className="text-gray-600 mb-6">
-                        A critical error occurred. Please refresh the page.
+                        We've been notified and are working on it. Please try again.
                     </p>
 
-                    <button
-                        onClick={reset}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                    >
-                        Refresh Page
-                    </button>
+                    {process.env.NODE_ENV === 'development' && (
+                        <div className="mb-6 p-4 bg-red-50 rounded border border-red-200 text-left">
+                            <p className="text-sm font-mono text-red-800 break-all">
+                                {error.message}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 justify-center">
+                        <button
+                            onClick={reset}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+                        >
+                            Try Again
+                        </button>
+
+                        <Link
+                            href="/"
+                            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
+                        >
+                            Go Home
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
-        </body>
-        </html>
     );
 }

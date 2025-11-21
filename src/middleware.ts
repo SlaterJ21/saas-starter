@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs';
 
 const { logger } = Sentry;
 
-export default async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const startTime = Date.now();
   const { pathname } = request.nextUrl;
 
@@ -20,13 +20,22 @@ export default async function proxy(request: NextRequest) {
 
   // Let Auth0 middleware handle auth routes
   if (pathname.startsWith('/auth/')) {
+    console.log('🔐 Proxy: Auth route detected:', pathname);
     try {
-      console.log('🔐 Auth middleware processing:', pathname);
-      response = await auth0.middleware(request);
-      console.log('🔐 Auth middleware response:', response.status);
+      console.log('🔐 Proxy: Calling auth0.middleware()');
+      const middlewareResponse = await auth0.middleware(request);
 
-      // If middleware didn't return a redirect, pass through to route handler
-      if (!response) {
+      console.log('🔐 Proxy: Middleware returned:', {
+        status: middlewareResponse?.status,
+        hasSetCookie: middlewareResponse?.headers.has('set-cookie'),
+        setCookie: middlewareResponse?.headers.get('set-cookie')?.substring(0, 100) + '...'
+      });
+
+      // If middleware returned a response, use it
+      if (middlewareResponse) {
+        response = middlewareResponse;
+      } else {
+        console.log('🔐 Proxy: Middleware returned nothing, passing through');
         response = NextResponse.next({
           request: {
             headers: requestHeaders,
@@ -34,7 +43,7 @@ export default async function proxy(request: NextRequest) {
         });
       }
     } catch (error) {
-      console.error('Auth0 middleware error:', error);
+      console.error('🔐 Proxy: Auth0 middleware error:', error);
       Sentry.captureException(error);
       response = NextResponse.next({
         request: {
@@ -51,8 +60,10 @@ export default async function proxy(request: NextRequest) {
     });
   }
 
-  // Add request ID to response headers
-  response.headers.set('x-request-id', requestId);
+  // Add request ID to response headers (but don't override auth headers)
+  if (!response.headers.has('set-cookie')) {
+    response.headers.set('x-request-id', requestId);
+  }
 
   // Log the request
   const duration = Date.now() - startTime;
