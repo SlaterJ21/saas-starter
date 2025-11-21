@@ -21,11 +21,26 @@ export default async function proxy(request: NextRequest) {
   // Let Auth0 middleware handle auth routes
   if (pathname.startsWith('/auth/')) {
     try {
+      console.log('🔐 Auth middleware processing:', pathname);
       response = await auth0.middleware(request);
+      console.log('🔐 Auth middleware response:', response.status);
+
+      // If middleware didn't return a redirect, pass through to route handler
+      if (!response) {
+        response = NextResponse.next({
+          request: {
+            headers: requestHeaders,
+          },
+        });
+      }
     } catch (error) {
       console.error('Auth0 middleware error:', error);
       Sentry.captureException(error);
-      response = NextResponse.next();
+      response = NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
     }
   } else {
     // Pass through everything else with request ID

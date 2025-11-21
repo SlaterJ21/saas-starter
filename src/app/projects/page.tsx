@@ -4,19 +4,12 @@ import DashboardLayout from '@/components/DashboardLayout';
 import {getCurrentOrgId} from '@/lib/org/current';
 import {redirect} from 'next/navigation';
 import Link from 'next/link';
+import {requireAuth} from "@/app/auth/require-auth";
 
 async function createProject(formData: FormData) {
     'use server';
 
-    const session = await auth0.getSession();
-    if (!session?.user) {
-        throw new Error('Not authenticated');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        throw new Error('User not found');
-    }
+    const { user } = await requireAuth();
 
     const currentOrgId = await getCurrentOrgId();
     if (!currentOrgId) {
@@ -36,16 +29,7 @@ async function createProject(formData: FormData) {
 }
 
 export default async function ProjectsPage() {
-    const session = await auth0.getSession();
-
-    if (!session?.user) {
-        redirect('/auth/login');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        redirect('/auth/login');
-    }
+    const { user } = await requireAuth();
 
     const currentOrgId = await getCurrentOrgId();
     if (!currentOrgId) {

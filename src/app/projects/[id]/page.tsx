@@ -1,9 +1,9 @@
-import {auth0} from '@/lib/auth0';
 import {db} from '@/lib/db/client';
 import DashboardLayout from '@/components/DashboardLayout';
-import {redirect, notFound} from 'next/navigation';
+import {notFound} from 'next/navigation';
 import Link from 'next/link';
 import TaskStatusButtons from '@/components/TaskStatusButtons';
+import {requireAuth} from "@/app/auth/require-auth";
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -12,15 +12,7 @@ type Props = {
 export default async function ProjectDetailPage({params}: Props) {
     const {id} = await params;
 
-    const session = await auth0.getSession();
-    if (!session?.user) {
-        redirect('/auth/login');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        redirect('/auth/login');
-    }
+    const { user } = await requireAuth();
 
     // Get project
     const project = await db.getProjectById(id);

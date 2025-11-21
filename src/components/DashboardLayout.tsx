@@ -1,25 +1,16 @@
-import {auth0} from '@/lib/auth0';
 import {db} from '@/lib/db/client';
 import {getCurrentOrgId} from '@/lib/org/current';
 import OrgSwitcher from './OrgSwitcher';
 import Avatar from './Avatar';
 import Link from 'next/link';
+import {requireAuth} from "@/app/auth/require-auth";
 
 type Props = {
     children: React.ReactNode;
 };
 
 export default async function DashboardLayout({children}: Props) {
-    const session = await auth0.getSession();
-
-    if (!session?.user) {
-        return <>{children}</>;
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        return <>{children}</>;
-    }
+    const { user } = await requireAuth();
 
     const userOrgs = await db.getUserOrganizations(user.id);
     const currentOrgId = await getCurrentOrgId();

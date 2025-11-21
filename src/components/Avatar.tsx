@@ -46,6 +46,8 @@ export default function Avatar({ name, imageUrl, size = 'md' }: Props) {
             <Image
                 src={imageUrl}
                 alt={name}
+                width={80}
+                height={80}
                 className={`${sizes[size]} rounded-full object-cover`}
                 onError={() => setImageError(true)}
             />

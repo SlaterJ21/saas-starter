@@ -1,53 +1,12 @@
-import {auth0} from '@/lib/auth0';
 import {db} from '@/lib/db/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import {getCurrentOrgId} from '@/lib/org/current';
-import {redirect} from 'next/navigation';
 import Link from "next/link";
-
-async function createTask(formData: FormData) {
-    'use server';
-
-    const session = await auth0.getSession();
-    if (!session?.user) {
-        throw new Error('Not authenticated');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        throw new Error('User not found');
-    }
-
-    const currentOrgId = await getCurrentOrgId();
-    if (!currentOrgId) {
-        throw new Error('No organization selected');
-    }
-
-    const projectId = formData.get('project_id') as string;
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const status = formData.get('status') as string;
-
-    if (!projectId || !title || !status) {
-        throw new Error('Project, title, and status are required');
-    }
-
-    await db.createTask(projectId, title, description || null, status, user.id);
-
-    redirect('/tasks');
-}
+import { TaskCreateForm } from '@/components/TaskCreateForm';
+import {requireAuth} from "@/app/auth/require-auth";
 
 export default async function TasksPage() {
-    const session = await auth0.getSession();
-
-    if (!session?.user) {
-        redirect('/auth/login');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        redirect('/auth/login');
-    }
+    const { user } = await requireAuth();
 
     const currentOrgId = await getCurrentOrgId();
     if (!currentOrgId) {
@@ -86,80 +45,7 @@ export default async function TasksPage() {
                 {projects.length > 0 ? (
                     <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
                         <h2 className="text-xl font-bold text-gray-900 mb-4">Create New Task</h2>
-                        <form action={createTask} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="project_id"
-                                           className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Project *
-                                    </label>
-                                    <select
-                                        id="project_id"
-                                        name="project_id"
-                                        required
-                                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                    >
-                                        <option value="">Select a project</option>
-                                        {projects.map((project) => (
-                                            <option key={project.id} value={project.id}>
-                                                {project.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label htmlFor="status" className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Status *
-                                    </label>
-                                    <select
-                                        id="status"
-                                        name="status"
-                                        required
-                                        defaultValue="todo"
-                                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                    >
-                                        <option value="todo">To Do</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="done">Done</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label htmlFor="title" className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Task Title *
-                                </label>
-                                <input
-                                    type="text"
-                                    id="title"
-                                    name="title"
-                                    required
-                                    placeholder="Implement user authentication"
-                                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Description
-                                </label>
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    rows={2}
-                                    placeholder="Add more details about this task..."
-                                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                            >
-                                Create Task
-                            </button>
-                        </form>
+                        <TaskCreateForm projects={projects} currentOrgId={currentOrgId} />
                     </div>
                 ) : (
                     <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-6">

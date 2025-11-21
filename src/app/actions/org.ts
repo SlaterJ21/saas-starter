@@ -2,29 +2,38 @@
 
 import { setCurrentOrgId } from '@/lib/org/current';
 import { redirect } from 'next/navigation';
-import { auth0 } from '@/lib/auth0';
 import { db } from '@/lib/db/client';
+import * as Sentry from '@sentry/nextjs';
+import {requireAuth} from "@/app/auth/require-auth";
 
 export async function switchOrganization(orgId: string) {
-    const session = await auth0.getSession();
-    if (!session?.user) {
-        throw new Error('Not authenticated');
-    }
+    return Sentry.startSpan(
+        {
+            op: 'action',
+            name: 'switchOrganization',
+        },
+        async () => {
+            try {
+                const { user } = await requireAuth();
 
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        throw new Error('User not found');
-    }
+                // Verify user is member of this org
+                const membership = await db.getUserOrgMembership(user.id, orgId);
+                if (!membership) {
+                    return { success: false, message: 'Not a member of this organization' };
+                }
 
-    // Verify user is member of this org
-    const membership = await db.getUserOrgMembership(user.id, orgId);
-    if (!membership) {
-        throw new Error('Not a member of this organization');
-    }
+                // Set current org
+                await setCurrentOrgId(orgId);
 
-    // Set current org
-    await setCurrentOrgId(orgId);
-
-    // Redirect to refresh the page with new context
-    redirect('/');
+                // Redirect to refresh the page with new context
+                redirect('/');
+            } catch (error) {
+                Sentry.captureException(error);
+                return {
+                    success: false,
+                    message: error instanceof Error ? error.message : 'Failed to switch organization'
+                };
+            }
+        }
+    );
 }

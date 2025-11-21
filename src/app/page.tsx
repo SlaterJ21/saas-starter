@@ -1,10 +1,9 @@
-import {auth0} from '@/lib/auth0';
 import {db} from '@/lib/db/client';
 import {getCurrentOrgId} from '@/lib/org/current';
-import {redirect} from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import * as Sentry from '@sentry/nextjs';
+import {requireAuth} from "@/app/auth/require-auth";
 
 const { logger } = Sentry;
 
@@ -17,31 +16,10 @@ export default async function Home() {
         async (span) => {
             const pageStartTime = Date.now();
 
-            const session = await auth0.getSession();
-
-            if (!session?.user) {
-                redirect('/auth/login');
-            }
-
-            // Debug log to see what we're getting
-            console.log('Session user:', session.user);
-
-            const auth0User = {
-                auth0Id: session.user.sub || session.user.id || '',
-                email: session.user.email || '',
-                name: session.user.name || session.user.email?.split('@')[0] || 'User',
-                picture: session.user.picture,
-            };
-
-            // Validate we have required data
-            if (!auth0User.auth0Id) {
-                console.error('Missing auth0Id from session:', session.user);
-                throw new Error('Authentication error: Missing user ID');
-            }
+            const { user } = await requireAuth();
 
             // Track database query performance
             const dbStartTime = Date.now();
-            const user = await db.findOrCreateUser(auth0User);
             const dbDuration = Date.now() - dbStartTime;
 
             span?.setAttribute('db.user_lookup_ms', dbDuration);

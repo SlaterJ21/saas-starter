@@ -1,24 +1,14 @@
-import { auth0 } from '@/lib/auth0';
 import { db } from '@/lib/db/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentOrgId } from '@/lib/org/current';
-import { redirect } from 'next/navigation';
 import Avatar from '@/components/Avatar';
 import MemberRoleSelect from '@/components/MemberRoleSelect';
 import RemoveMemberButton from '@/components/RemoveMemberButton';
 import InviteMemberForm from '@/components/InviteMemberForm';
+import {requireAuth} from "@/app/auth/require-auth";
 
 export default async function TeamPage() {
-    const session = await auth0.getSession();
-
-    if (!session?.user) {
-        redirect('/auth/login');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        redirect('/auth/login');
-    }
+    const { user } = await requireAuth();
 
     const currentOrgId = await getCurrentOrgId();
     if (!currentOrgId) {

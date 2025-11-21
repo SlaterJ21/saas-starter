@@ -2,19 +2,12 @@ import {auth0} from '@/lib/auth0';
 import {redirect} from 'next/navigation';
 import {db} from '@/lib/db/client';
 import Link from "next/link";
+import {requireAuth} from "@/app/auth/require-auth";
 
 async function createOrganization(formData: FormData) {
     'use server';
 
-    const session = await auth0.getSession();
-    if (!session?.user) {
-        throw new Error('Not authenticated');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        throw new Error('User not found');
-    }
+    const { user } = await requireAuth();
 
     const name = formData.get('name') as string;
     const slug = formData.get('slug') as string;

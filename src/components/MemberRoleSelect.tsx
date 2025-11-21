@@ -1,48 +1,41 @@
 'use client';
 
+import { useTransition } from 'react';
 import { updateMemberRole } from '@/app/actions/team';
-import { useState } from 'react';
+import { toast } from '@/lib/toast';
 
-type Props = {
+export default function MemberRoleSelect({
+                                             userId,
+                                             currentRole,
+                                         }: {
     userId: string;
     currentRole: string;
-};
+}) {
+    const [isPending, startTransition] = useTransition();
 
-export default function MemberRoleSelect({ userId, currentRole }: Props) {
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const handleRoleChange = (newRole: string) => {
+        startTransition(async () => {
+            const result = await updateMemberRole(userId, newRole);
 
-    async function handleRoleChange(newRole: string) {
-        if (newRole === currentRole || isUpdating) return;
-
-        setIsUpdating(true);
-        setError(null);
-
-        try {
-            await updateMemberRole(userId, newRole);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to update role');
-        } finally {
-            setIsUpdating(false);
-        }
-    }
+            if (result.success) {
+                toast.success('Role updated!', result.message);
+            } else {
+                toast.error('Failed to update role', result.message);
+            }
+        });
+    };
 
     return (
-        <div>
-            <select
-                value={currentRole}
-                onChange={(e) => handleRoleChange(e.target.value)}
-                disabled={isUpdating}
-                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-semibold uppercase text-sm disabled:opacity-50"
-            >
-                <option value="owner">Owner</option>
-                <option value="admin">Admin</option>
-                <option value="member">Member</option>
-                <option value="viewer">Viewer</option>
-            </select>
-            {error && (
-                <p className="text-red-600 text-xs mt-1">{error}</p>
-            )}
-        </div>
+        <select
+            value={currentRole}
+            onChange={(e) => handleRoleChange(e.target.value)}
+            disabled={isPending}
+            className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-semibold disabled:opacity-50"
+        >
+            <option value="owner">Owner</option>
+            <option value="admin">Admin</option>
+            <option value="member">Member</option>
+            <option value="viewer">Viewer</option>
+        </select>
     );
 }

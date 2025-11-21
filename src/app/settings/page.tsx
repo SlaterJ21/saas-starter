@@ -1,24 +1,15 @@
-import { auth0 } from '@/lib/auth0';
 import { db } from '@/lib/db/client';
 import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentOrgId } from '@/lib/org/current';
-import { redirect } from 'next/navigation';
 import Avatar from '@/components/Avatar';
-import { updateProfile, updateOrganizationSettings } from '@/app/actions/settings';
 import LeaveOrgButton from '@/components/LeaveOrgButton';
 import DeleteOrgButton from '@/components/DeleteOrgButton';
+import { SettingsProfileForm } from '@/components/SettingsProfileForm';
+import { SettingsOrgForm } from '@/components/SettingsOrgForm';
+import {requireAuth} from "@/app/auth/require-auth";
 
 export default async function SettingsPage() {
-    const session = await auth0.getSession();
-
-    if (!session?.user) {
-        redirect('/auth/login');
-    }
-
-    const user = await db.findUserByAuth0Id(session.user.sub);
-    if (!user) {
-        redirect('/auth/login');
-    }
+    const { user } = await requireAuth();
 
     const currentOrgId = await getCurrentOrgId();
     if (!currentOrgId) {
@@ -65,43 +56,22 @@ export default async function SettingsPage() {
                         </div>
                     </div>
 
-                    <form action={updateProfile} className="space-y-4">
-                        <div>
-                            <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
-                                Display Name
-                            </label>
-                            <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                defaultValue={user.name || ''}
-                                placeholder="Your name"
-                                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                            />
-                        </div>
+                    <SettingsProfileForm userName={user.name} />
 
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                value={user.email}
-                                disabled
-                                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                Email is managed by your authentication provider
-                            </p>
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                        >
-                            Save Profile
-                        </button>
-                    </form>
+                    <div className="mt-4">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            Email
+                        </label>
+                        <input
+                            type="email"
+                            value={user.email}
+                            disabled
+                            className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Email is managed by your authentication provider
+                        </p>
+                    </div>
                 </div>
 
                 {/* Organization Settings */}
@@ -119,44 +89,7 @@ export default async function SettingsPage() {
                         </div>
 
                         {canEditOrg ? (
-                            <form action={updateOrganizationSettings} className="space-y-4">
-                                <div>
-                                    <label htmlFor="org-name" className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Organization Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="org-name"
-                                        name="name"
-                                        defaultValue={currentOrg.name}
-                                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="org-slug" className="block text-sm font-semibold text-gray-700 mb-2">
-                                        URL Slug
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="org-slug"
-                                        name="slug"
-                                        defaultValue={currentOrg.slug}
-                                        pattern="[a-z0-9-]+"
-                                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 font-mono"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Lowercase letters, numbers, and hyphens only
-                                    </p>
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                                >
-                                    Save Organization
-                                </button>
-                            </form>
+                            <SettingsOrgForm orgName={currentOrg.name} orgSlug={currentOrg.slug} />
                         ) : (
                             <div className="text-gray-600">
                                 <p className="mb-2"><strong>Name:</strong> {currentOrg.name}</p>

@@ -1,104 +1,99 @@
 'use client';
 
+import { useState, useTransition } from 'react';
 import { inviteMemberByEmail } from '@/app/actions/team';
-import { useState } from 'react';
+import { toast } from '@/lib/toast';
 
 export default function InviteMemberForm() {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
+    const [email, setEmail] = useState('');
+    const [role, setRole] = useState('member');
+    const [showForm, setShowForm] = useState(false);
 
-    async function handleSubmit(formData: FormData) {
-        setIsSubmitting(true);
-        setError(null);
-        setSuccess(null);
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
 
-        const email = formData.get('email') as string;
-        const role = formData.get('role') as string;
+        startTransition(async () => {
+            const result = await inviteMemberByEmail(email, role);
 
-        try {
-            await inviteMemberByEmail(email, role);
-            setSuccess(`Successfully invited ${email} as ${role}`);
+            if (result.success) {
+                toast.success('Member invited!', result.message);
+                setEmail('');
+                setRole('member');
+                setShowForm(false);
+            } else {
+                toast.error('Failed to invite member', result.message);
+            }
+        });
+    };
 
-            // Reset form
-            const form = document.getElementById('invite-form') as HTMLFormElement;
-            if (form) form.reset();
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to invite member');
-        } finally {
-            setIsSubmitting(false);
-        }
+    if (!showForm) {
+        return (
+            <button
+                onClick={() => setShowForm(true)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
+            >
+                + Invite Member
+            </button>
+        );
     }
 
     return (
         <div className="bg-white rounded-lg border-2 border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Invite Team Member</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Invite New Member</h2>
 
-            {/* Success Message */}
-            {success && (
-                <div className="mb-4 p-4 bg-green-50 border-2 border-green-300 rounded-lg">
-                    <p className="text-green-800 font-semibold">✓ {success}</p>
-                </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-                <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
-                    <p className="text-red-800 font-semibold">✕ {error}</p>
-                    {error.includes('not found') && (
-                        <p className="text-red-700 text-sm mt-2">
-                            The user must create an account first before they can be invited.
-                        </p>
-                    )}
-                </div>
-            )}
-
-            <form id="invite-form" action={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="md:col-span-2">
-                        <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                            Email Address *
-                        </label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            required
-                            placeholder="colleague@example.com"
-                            disabled={isSubmitting}
-                            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:opacity-50"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                            User must have an account already
-                        </p>
-                    </div>
-
-                    <div>
-                        <label htmlFor="role" className="block text-sm font-semibold text-gray-700 mb-2">
-                            Role *
-                        </label>
-                        <select
-                            id="role"
-                            name="role"
-                            required
-                            defaultValue="member"
-                            disabled={isSubmitting}
-                            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:opacity-50"
-                        >
-                            <option value="admin">Admin</option>
-                            <option value="member">Member</option>
-                            <option value="viewer">Viewer</option>
-                        </select>
-                    </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Email Address *
+                    </label>
+                    <input
+                        type="email"
+                        id="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="colleague@example.com"
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                        User must already have an account
+                    </p>
                 </div>
 
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50"
-                >
-                    {isSubmitting ? 'Sending Invite...' : 'Send Invite'}
-                </button>
+                <div>
+                    <label htmlFor="role" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Role *
+                    </label>
+                    <select
+                        id="role"
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        required
+                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                        <option value="viewer">Viewer</option>
+                    </select>
+                </div>
+
+                <div className="flex gap-3">
+                    <button
+                        type="submit"
+                        disabled={isPending}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold disabled:opacity-50"
+                    >
+                        {isPending ? 'Inviting...' : 'Send Invite'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setShowForm(false)}
+                        className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
+                    >
+                        Cancel
+                    </button>
+                </div>
             </form>
         </div>
     );
