@@ -1,8 +1,9 @@
 'use client';
 
-import { useTransition } from 'react';
-import { removeMember } from '@/app/actions/team';
-import { toast } from '@/lib/toast';
+import {useTransition} from 'react';
+import {removeMember} from '@/app/actions/team';
+import {toast} from '@/lib/toast';
+import {useRouter} from 'next/navigation';
 
 export default function RemoveMemberButton({
                                                userId,
@@ -12,17 +13,22 @@ export default function RemoveMemberButton({
     userName: string;
 }) {
     const [isPending, startTransition] = useTransition();
+    const router = useRouter();
 
     const handleRemove = () => {
         if (!confirm(`Remove ${userName} from this organization?`)) {
             return;
         }
 
+        // Optimistic toast
+        toast.success('Removing member...');
+
         startTransition(async () => {
             const result = await removeMember(userId);
 
             if (result.success) {
                 toast.success('Member removed', result.message);
+                router.refresh();
             } else {
                 toast.error('Failed to remove member', result.message);
             }

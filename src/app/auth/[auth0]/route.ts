@@ -1,6 +1,5 @@
 import { auth0 } from '@/lib/auth0';
 import { NextRequest, NextResponse } from 'next/server';
-import {requireAuth} from "@/app/auth/require-auth";
 
 export async function GET(
     request: NextRequest,
@@ -30,25 +29,15 @@ export async function GET(
             }
 
             case 'callback': {
-                // The middleware should have already processed this
-                // Check if we have a session now
-                const { session, user } = await requireAuth();
-
-                console.log('Callback - Session check:', session ? 'EXISTS' : 'MISSING');
-
-                if (session) {
-                    console.log('Callback - Session user:', user?.email);
-                    return NextResponse.redirect(new URL('/', request.url));
-                } else {
-                    console.error('Callback - No session after middleware!');
-                    // Try to get the middleware to process it
-                    return await auth0.middleware(request);
-                }
+                // DON'T use requireAuth here - the middleware handles the OAuth exchange
+                // The session isn't available yet during the callback
+                console.log('Callback route - redirecting to home');
+                return NextResponse.redirect(new URL('/', request.url));
             }
 
             case 'me': {
-                const { user } = await requireAuth();
-                return NextResponse.json(user || null);
+                const session = await auth0.getSession();
+                return NextResponse.json(session?.user || null);
             }
 
             default:

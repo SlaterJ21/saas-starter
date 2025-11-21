@@ -4,6 +4,7 @@ import {getCurrentOrgId} from '@/lib/org/current';
 import Link from "next/link";
 import { TaskCreateForm } from '@/components/TaskCreateForm';
 import {requireAuth} from "@/app/auth/require-auth";
+import {TaskCard} from "@/components/TaskCard";
 
 export default async function TasksPage() {
     const { user } = await requireAuth();
@@ -103,23 +104,7 @@ function TaskColumn({title, tasks, color}: { title: string; tasks: any[]; color:
                     <p className="text-gray-500 text-sm text-center py-8">No tasks</p>
                 ) : (
                     tasks.map((task) => (
-                        <div key={task.id}
-                             className={`${colors[color as keyof typeof colors]} border-2 rounded-lg p-3`}>
-                            <h4 className="font-semibold text-gray-900 text-sm mb-1">
-                                {task.title}
-                            </h4>
-                            {task.description && (
-                                <p className="text-gray-600 text-xs mb-2">
-                                    {task.description}
-                                </p>
-                            )}
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                                <span className="font-medium">{task.project_name}</span>
-                                {task.assigned_to_name && (
-                                    <span>• {task.assigned_to_name}</span>
-                                )}
-                            </div>
-                        </div>
+                        <TaskCard key={task.id} task={task} />
                     ))
                 )}
             </div>
