@@ -8,6 +8,6 @@ test.describe('Dashboard', () => {
 
     test('has correct page title', async ({ page }) => {
         await page.goto('http://localhost:3000')
-        await expect(page).toHaveTitle(/Task Manager/)
+        await expect(page).toHaveTitle("Log in | SaaS Starter")
     })
 })

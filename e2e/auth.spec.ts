@@ -9,7 +9,7 @@ test.describe('Authentication Flow', () => {
     })
 
     test('should show dashboard after login', async ({ page }) => {
-        // Note: This requires you to set up auth state
+        // Note: This requires setting up an auth state
         // For now, we'll skip actual login
         test.skip()
     })

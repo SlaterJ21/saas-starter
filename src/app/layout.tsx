@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from '@/components/Toaster';
 import { QueryProvider } from '@/lib/providers/query-provider';
+import PerformanceMonitor from '@/components/PerformanceMonitor';
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Task Manager",
-    description: "Manage your projects and tasks",
+    title: "Task Manager - Efficient Project & Team Management",
+    description: "Modern task management application with real-time collaboration",
 };
 
 export default function RootLayout({
@@ -32,6 +33,7 @@ export default function RootLayout({
         <QueryProvider>
             {children}
             <Toaster />
+            <PerformanceMonitor />
         </QueryProvider>
         </body>
         </html>
