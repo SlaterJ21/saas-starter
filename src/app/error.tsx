@@ -41,7 +41,7 @@ export default function Error({
                     </h2>
 
                     <p className="text-gray-600 mb-6">
-                        We've been notified and are working on it. Please try again.
+                        We&apos;ve been notified and are working on it. Please try again.
                     </p>
 
                     {process.env.NODE_ENV === 'development' && (
