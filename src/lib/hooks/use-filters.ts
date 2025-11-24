@@ -12,19 +12,31 @@ export function useFilters<T>(items: T[]) {
 
         return items.filter((item) => {
             return Object.entries(activeFilters).every(([key, values]) => {
-                if (!values || values.length === 0) return true;
+                // Type guard to ensure values is an array
+                if (!values || !Array.isArray(values) || values.length === 0) {
+                    return true;
+                }
 
                 const itemValue = item[key as keyof T];
-                return values.includes(itemValue as any);
+                return (values as any[]).includes(itemValue);
             });
         });
     }, [items, activeFilters]);
 
     const setFilter = <K extends keyof T>(key: K, values: T[K][]) => {
-        setActiveFilters((prev) => ({
-            ...prev,
-            [key]: values.length > 0 ? values : undefined,
-        }));
+        setActiveFilters((prev) => {
+            if (values.length === 0) {
+                // Remove filter if empty
+                const newFilters = { ...prev };
+                delete newFilters[key];
+                return newFilters;
+            }
+
+            return {
+                ...prev,
+                [key]: values,
+            };
+        });
     };
 
     const clearFilter = (key: keyof T) => {
@@ -40,9 +52,10 @@ export function useFilters<T>(items: T[]) {
     };
 
     const getActiveFilterCount = () => {
-        return Object.values(activeFilters).filter(
-            (values) => values && values.length > 0
-        ).length;
+        return Object.values(activeFilters).filter((values) => {
+            // Type guard to ensure values is an array with length
+            return Array.isArray(values) && values.length > 0;
+        }).length;
     };
 
     return {
