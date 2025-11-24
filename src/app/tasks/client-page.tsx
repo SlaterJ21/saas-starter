@@ -1,14 +1,20 @@
 'use client';
 
+import { DndContext, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useTasks } from '@/lib/hooks/use-tasks';
+import { useTaskStatusUpdate } from '@/lib/hooks/use-task-mutation';
 import { useSearch } from '@/lib/hooks/use-search';
 import { useFilters } from '@/lib/hooks/use-filters';
 import { usePagination } from '@/lib/hooks/use-pagination';
+import { useDragDrop } from '@/lib/hooks/use-drag-drop';
+import { toast } from '@/lib/toast';
 import SearchBar from '@/components/SearchBar';
 import FilterBar from '@/components/FilterBar';
 import FilterDropdown from '@/components/FilterDropdown';
 import Pagination from '@/components/Pagination';
-import { TaskCard } from '@/components/TaskCard';
+import DroppableColumn from '@/components/DroppableColumn';
+import DraggableTaskCard from '@/components/DraggableTaskCard';
+import DragOverlay from '@/components/DragOverlay';
 
 interface Task {
     id: string;
@@ -25,6 +31,7 @@ interface Task {
 
 export default function TasksClientPage({ orgId }: { orgId: string }) {
     const { data: tasks = [], isLoading } = useTasks(orgId);
+    const { updateStatus } = useTaskStatusUpdate(orgId);
 
     // Cast to Task[] for type safety
     const typedTasks = tasks as Task[];
@@ -56,7 +63,36 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
         totalItems,
         itemsPerPage,
         goToPage,
-    } = usePagination<Task>(filteredTasks, 12);
+    } = usePagination<Task>(filteredTasks, 50);
+
+    // Drag sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
+
+    // Drag & Drop
+    const { activeId, handleDragStart, handleDragEnd, handleDragCancel } = useDragDrop({
+        items: paginatedTasks,
+        onReorder: (newItems) => {
+            console.log('Reordered:', newItems);
+        },
+        onMove: async (taskId, newStatus) => {
+            try {
+                const result = await updateStatus(taskId, newStatus);
+                if (result.success) {
+                    toast.success('Task moved!', result.message);
+                }
+            } catch (error: any) {
+                toast.error('Failed to move task', error.message);
+            }
+        },
+        getItemId: (item) => item.id,
+        getItemStatus: (item) => item.status,
+    });
 
     // Group tasks by status
     const tasksByStatus = {
@@ -104,7 +140,6 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
         },
     ];
 
-    // Get current filter values
     const selectedStatuses = (activeFilters.status as string[]) || [];
     const selectedProjects = (activeFilters.project_name as string[]) || [];
     const selectedAssignees = (activeFilters.assigned_to_name as string[]) || [];
@@ -179,6 +214,13 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
                 )}
             </FilterBar>
 
+            {/* Help Text */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-900">
+                    💡 <strong>Tip:</strong> Drag and drop tasks between columns to change their status!
+                </p>
+            </div>
+
             {/* Results Count */}
             <div className="flex items-center justify-between text-sm text-gray-600">
         <span>
@@ -187,33 +229,54 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
         </span>
             </div>
 
-            {/* Kanban Board */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
-                    <div key={status} className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-900 capitalize">
-                                {status.replace('_', ' ')}
-                            </h3>
-                            <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
-                {statusTasks.length}
-              </span>
-                        </div>
+            {/* Drag & Drop Kanban Board */}
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <DroppableColumn
+                        id="todo"
+                        title="To Do"
+                        count={tasksByStatus.todo.length}
+                        taskIds={tasksByStatus.todo.map((t) => t.id)}
+                        color="gray"
+                    >
+                        {tasksByStatus.todo.map((task) => (
+                            <DraggableTaskCard key={task.id} task={task} />
+                        ))}
+                    </DroppableColumn>
 
-                        <div className="space-y-3">
-                            {statusTasks.map((task) => (
-                                <TaskCard key={task.id} task={task} />
-                            ))}
+                    <DroppableColumn
+                        id="in_progress"
+                        title="In Progress"
+                        count={tasksByStatus.in_progress.length}
+                        taskIds={tasksByStatus.in_progress.map((t) => t.id)}
+                        color="blue"
+                    >
+                        {tasksByStatus.in_progress.map((task) => (
+                            <DraggableTaskCard key={task.id} task={task} />
+                        ))}
+                    </DroppableColumn>
 
-                            {statusTasks.length === 0 && (
-                                <p className="text-gray-500 text-sm text-center py-8">
-                                    No tasks
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    <DroppableColumn
+                        id="done"
+                        title="Done"
+                        count={tasksByStatus.done.length}
+                        taskIds={tasksByStatus.done.map((t) => t.id)}
+                        color="green"
+                    >
+                        {tasksByStatus.done.map((task) => (
+                            <DraggableTaskCard key={task.id} task={task} />
+                        ))}
+                    </DroppableColumn>
+                </div>
+
+                <DragOverlay activeId={activeId} tasks={paginatedTasks} />
+            </DndContext>
 
             {/* Pagination */}
             {totalPages > 1 && (
