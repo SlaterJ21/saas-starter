@@ -46,23 +46,18 @@ export const db = {
             async (span) => {
                 span?.setAttribute('email', email);
                 span?.setAttribute('auth0_id', auth0Id);
-
-                console.log('Creating user with auth0Id:', auth0Id); // Debug log
-
+                console.log('Creating user with auth0Id:', auth0Id);
                 logger.info('Creating new user', { email, auth0Id });
-
                 const result = await pool.query(
                     `INSERT INTO users (auth0_id, email, name, avatar_url) 
          VALUES ($1, $2, $3, $4) 
          RETURNING *`,
-                    [auth0Id, email, name, avatarUrl]  // Array of parameters
+                    [auth0Id, email, name, avatarUrl]
                 );
-
                 logger.info('User created successfully', {
                     userId: result.rows[0].id,
                     email
                 });
-
                 return result.rows[0];
             }
         );
@@ -107,16 +102,14 @@ export const db = {
         picture?: string;
     }) {
         let user = await this.findUserByAuth0Id(auth0User.auth0Id);
-
         if (!user) {
-            console.log('User not found, creating with:', auth0User); // Debug log
+            console.log('User not found, creating with:', auth0User);
             user = await this.createUser(
                 auth0User.auth0Id,
                 auth0User.email,
                 auth0User.name,
                 auth0User.picture
             );
-
             // Auto-create personal organization for new users
             const personalOrgSlug = `${auth0User.email.split('@')[0]}-personal-${Date.now()}`;
             const personalOrg = await this.createOrganization(
@@ -124,12 +117,11 @@ export const db = {
                 personalOrgSlug,
                 user.id
             );
-
             await this.addUserToOrganization(user.id, personalOrg.id, 'owner');
         }
-
         return user;
     },
+
     async getOrganizationById(orgId: string) {
         const result = await pool.query(
             'SELECT * FROM organizations WHERE id = $1',
@@ -148,6 +140,7 @@ export const db = {
         );
         return result.rows[0] || null;
     },
+
     async getProjectsByOrganization(organizationId: string) {
         const result = await pool.query(
             `SELECT p.*, 
@@ -176,6 +169,7 @@ export const db = {
         const result = await pool.query(
             `SELECT t.*, 
       p.name as project_name,
+      p.organization_id,
       u_assigned.name as assigned_to_name,
       u_created.name as created_by_name
      FROM tasks t
@@ -204,7 +198,8 @@ export const db = {
             `SELECT p.*, 
       u.name as creator_name,
       u.email as creator_email,
-      o.name as organization_name
+      o.name as organization_name,
+      o.id as organization_id
      FROM projects p
      LEFT JOIN users u ON p.created_by = u.id
      LEFT JOIN organizations o ON p.organization_id = o.id
@@ -295,6 +290,7 @@ export const db = {
             `SELECT t.*, 
       p.name as project_name,
       p.id as project_id,
+      p.organization_id,
       u_assigned.name as assigned_to_name,
       u_created.name as created_by_name
      FROM tasks t
@@ -425,5 +421,129 @@ export const db = {
             [organizationId]
         );
         return parseInt(result.rows[0].count);
+    },
+
+    // ============================================
+    // NOTIFICATIONS METHODS
+    // ============================================
+
+    async createNotification(data: {
+        userId: string;
+        organizationId: string;
+        type: string;
+        title: string;
+        message: string;
+        link?: string;
+        createdBy?: string;
+        metadata?: any;
+    }) {
+        const result = await pool.query(
+            `INSERT INTO notifications 
+       (user_id, organization_id, type, title, message, link, created_by, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING *`,
+            [
+                data.userId,
+                data.organizationId,
+                data.type,
+                data.title,
+                data.message,
+                data.link || null,
+                data.createdBy || null,
+                data.metadata ? JSON.stringify(data.metadata) : null,
+            ]
+        );
+        return result.rows[0];
+    },
+
+    async getUserNotifications(userId: string, limit = 50) {
+        const result = await pool.query(
+            `SELECT n.*, 
+              u.name as created_by_name,
+              u.avatar_url as created_by_avatar
+       FROM notifications n
+       LEFT JOIN users u ON n.created_by = u.id
+       WHERE n.user_id = $1
+       ORDER BY n.created_at DESC
+       LIMIT $2`,
+            [userId, limit]
+        );
+        return result.rows;
+    },
+
+    async getUnreadNotificationCount(userId: string) {
+        const result = await pool.query(
+            `SELECT COUNT(*) as count
+       FROM notifications
+       WHERE user_id = $1 AND is_read = FALSE`,
+            [userId]
+        );
+        return parseInt(result.rows[0].count);
+    },
+
+    async markNotificationAsRead(notificationId: string, userId: string) {
+        const result = await pool.query(
+            `UPDATE notifications
+       SET is_read = TRUE
+       WHERE id = $1 AND user_id = $2
+       RETURNING *`,
+            [notificationId, userId]
+        );
+        return result.rows[0];
+    },
+
+    async markAllNotificationsAsRead(userId: string) {
+        await pool.query(
+            `UPDATE notifications
+       SET is_read = TRUE
+       WHERE user_id = $1 AND is_read = FALSE`,
+            [userId]
+        );
+    },
+
+    // ============================================
+    // ACTIVITY LOG METHODS
+    // ============================================
+
+    async createActivity(data: {
+        organizationId: string;
+        userId: string;
+        actionType: string;
+        entityType: string;
+        entityId?: string;
+        description: string;
+        metadata?: any;
+    }) {
+        const result = await pool.query(
+            `INSERT INTO activity_log
+       (organization_id, user_id, action_type, entity_type, entity_id, description, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+            [
+                data.organizationId,
+                data.userId,
+                data.actionType,
+                data.entityType,
+                data.entityId || null,
+                data.description,
+                data.metadata ? JSON.stringify(data.metadata) : null,
+            ]
+        );
+        return result.rows[0];
+    },
+
+    async getOrganizationActivity(organizationId: string, limit = 50) {
+        const result = await pool.query(
+            `SELECT a.*,
+              u.name as user_name,
+              u.avatar_url as user_avatar
+       FROM activity_log a
+       LEFT JOIN users u ON a.user_id = u.id
+       WHERE a.organization_id = $1
+       ORDER BY a.created_at DESC
+       LIMIT $2`,
+            [organizationId, limit]
+        );
+        return result.rows;
     },
 };

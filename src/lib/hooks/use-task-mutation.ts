@@ -27,7 +27,6 @@ export function useTaskStatusUpdate(orgId: string | null) {
 
         // Find the task being updated
         const taskToUpdate = currentTasks.find(t => t.id === taskId);
-        const oldStatus = taskToUpdate?.status;
 
         // Optimistically update the cache
         const updatedTasks = currentTasks.map((task) =>
@@ -46,7 +45,10 @@ export function useTaskStatusUpdate(orgId: string | null) {
                 throw new Error(result.message);
             }
 
-            // Success - the optimistic update is already in place
+            // Force refetch to get latest data from server
+            await queryClient.invalidateQueries({ queryKey: ['tasks', orgId] });
+
+            // Success - return result
             return { success: true, message: result.message };
         } catch (error) {
             // Revert on error

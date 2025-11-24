@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { DndContext, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { useTasks } from '@/lib/hooks/use-tasks';
-import { useTaskStatusUpdate } from '@/lib/hooks/use-task-mutation';
+import { useTasks, useUpdateTaskStatusMutation } from '@/lib/hooks/use-tasks';
+import { useProjects } from '@/lib/hooks/use-projects';
+import { useTeamMembers } from '@/lib/hooks/use-team';
 import { useSearch } from '@/lib/hooks/use-search';
 import { useFilters } from '@/lib/hooks/use-filters';
 import { usePagination } from '@/lib/hooks/use-pagination';
@@ -15,6 +17,7 @@ import Pagination from '@/components/Pagination';
 import DroppableColumn from '@/components/DroppableColumn';
 import DraggableTaskCard from '@/components/DraggableTaskCard';
 import DragOverlay from '@/components/DragOverlay';
+import TaskCreateForm from '@/components/TaskCreateForm';
 
 interface Task {
     id: string;
@@ -30,8 +33,11 @@ interface Task {
 }
 
 export default function TasksClientPage({ orgId }: { orgId: string }) {
-    const { data: tasks = [], isLoading } = useTasks(orgId);
-    const { updateStatus } = useTaskStatusUpdate(orgId);
+    const { data: tasks = [], isLoading: tasksLoading } = useTasks(orgId);
+    const { data: projects = [], isLoading: projectsLoading } = useProjects(orgId);
+    const { data: teamMembers = [], isLoading: teamLoading } = useTeamMembers(orgId);
+    const updateTaskMutation = useUpdateTaskStatusMutation(orgId);
+    const [showCreateForm, setShowCreateForm] = useState(false);
 
     // Cast to Task[] for type safety
     const typedTasks = tasks as Task[];
@@ -81,14 +87,17 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
             console.log('Reordered:', newItems);
         },
         onMove: async (taskId, newStatus) => {
-            try {
-                const result = await updateStatus(taskId, newStatus);
-                if (result.success) {
-                    toast.success('Task moved!', result.message);
+            updateTaskMutation.mutate(
+                { taskId, status: newStatus },
+                {
+                    onSuccess: () => {
+                        toast.success('Task moved!', `Moved to ${newStatus.replace('_', ' ')}`);
+                    },
+                    onError: (error) => {
+                        toast.error('Failed to move task', error.message);
+                    },
                 }
-            } catch (error: any) {
-                toast.error('Failed to move task', error.message);
-            }
+            );
         },
         getItemId: (item) => item.id,
         getItemStatus: (item) => item.status,
@@ -144,6 +153,8 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
     const selectedProjects = (activeFilters.project_name as string[]) || [];
     const selectedAssignees = (activeFilters.assigned_to_name as string[]) || [];
 
+    const isLoading = tasksLoading || projectsLoading || teamLoading;
+
     if (isLoading) {
         return (
             <div className="space-y-6">
@@ -162,6 +173,31 @@ export default function TasksClientPage({ orgId }: { orgId: string }) {
 
     return (
         <div className="space-y-6">
+            {/* Create Task Button */}
+            <div className="flex justify-end">
+                <button
+                    onClick={() => setShowCreateForm(!showCreateForm)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {showCreateForm ? 'Hide Form' : 'New Task'}
+                </button>
+            </div>
+
+            {/* Create Task Form */}
+            {showCreateForm && (
+                <div className="bg-white rounded-lg border-2 border-blue-200 shadow-lg p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Create New Task</h3>
+                    <TaskCreateForm
+                        projects={projects}
+                        teamMembers={teamMembers}
+                        onSuccess={() => setShowCreateForm(false)}
+                    />
+                </div>
+            )}
+
             {/* Search Bar */}
             <SearchBar
                 value={searchTerm}

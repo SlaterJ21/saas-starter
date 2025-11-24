@@ -4,6 +4,7 @@ import OrgSwitcher from './OrgSwitcher';
 import Avatar from './Avatar';
 import Link from 'next/link';
 import {requireAuth} from "@/app/auth/require-auth";
+import NotificationBell from "@/components/NotificationBell";
 
 type Props = {
     children: React.ReactNode;
@@ -43,6 +44,7 @@ export default async function DashboardLayout({children}: Props) {
 
                         {/* User Menu */}
                         <div className="flex items-center gap-4">
+                            {user && <NotificationBell userId={user.id} />}
                             <Link
                                 href="http://localhost:5001/graphiql"
                                 target="_blank"
